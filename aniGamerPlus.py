@@ -6,6 +6,7 @@
 # @Software: PyCharm
 
 # 非阻塞 (Web)
+import pathlib
 from gevent import monkey
 monkey.patch_all()
 
@@ -322,7 +323,44 @@ def download_cd_counter():
     thread_limiter.release()  # 并发下载限制器
 
 
+def extract_sn(filename):
+    # Define a regex pattern to match [sn-<number>]
+    pattern = r'\[sn-(\d+)\]'
+
+    # Search for the pattern in the filename
+    match = re.search(pattern, filename)
+
+    # If a match is found, return the number
+    if match:
+        return match.group(1)  # Group 1 contains the digits
+    return None
+
+
+def danmu_update(directory):
+    # Convert directory string to a Path object
+    path = pathlib.Path(directory)
+
+    # Recursively search for all .ass files
+    ass_files = path.rglob('*.ass')  # rglob searches recursively
+
+    # Iterate through the generator and print the file paths
+    successes = 0
+    for ass_file in ass_files:
+        ass_path = str(ass_file.resolve())
+        sn = extract_sn(ass_file.name)
+        if (sn == None):
+            err_print('彈幕更新異常', '番劇檔案sn標籤不存在: ' + ass_path, status=1)
+        else:
+            d = Danmu(sn, ass_path, Config.read_cookie())
+            d.download(settings['danmu_ban_words'])
+            successes += 1
+    err_print(sn, '彈幕更新任務完成！' + str(successes) + '個彈幕檔案成功更新。', status=2)
+
+
 def check_tasks():
+    if settings['refresh_all_danmu_on_check']:
+        danmu_update(settings['bangumi_dir'])
+
     for sn in sn_dict.keys():
         anime = build_anime(sn)
         if anime['failed']:
@@ -494,6 +532,11 @@ def __cui(sn, cui_resolution, cui_download_mode, cui_thread_limit, ep_range,
             realtime_show_file_size = False
     else:
         realtime_show_file_size = False
+
+    if cui_download_mode == 'danmu-update':
+        print('當前模式: 搜索 ' + settings['bangumi_dir'] +
+              ' 以下的所有.ass檔案，重新下載並覆蓋。請注意，檔名中必須有[sn-xxxx]標籤，可以在config.json中添加"add_sn_to_video_filename": true開啟。')
+        danmu_update(settings['bangumi_dir'])
 
     if cui_download_mode == 'single':
         if get_info:
@@ -891,7 +934,7 @@ if __name__ == '__main__':
         parser.add_argument('--sn', '-s', type=int, help='視頻sn碼(數字)')
         parser.add_argument('--resolution', '-r', type=int, help='指定下載清晰度(數字)', choices=[360, 480, 540, 576, 720, 1080])
         parser.add_argument('--download_mode', '-m', type=str, help='下載模式', default='single',
-                            choices=['single', 'latest', 'largest-sn', 'multi', 'all', 'range', 'list', 'sn-list', 'sn-range', 'db'])
+                            choices=['danmu-update', 'single', 'latest', 'largest-sn', 'multi', 'all', 'range', 'list', 'sn-list', 'sn-range', 'db'])
         parser.add_argument('--thread_limit', '-t', type=int, help='最高并發下載數(數字)')
         parser.add_argument('--current_path', '-c', action='store_true', help='下載到當前工作目錄')
         parser.add_argument('--episodes', '-e', type=str, help='僅下載指定劇集')
