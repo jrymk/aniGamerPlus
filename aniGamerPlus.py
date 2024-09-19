@@ -1090,8 +1090,6 @@ if __name__ == '__main__':
                     err_print(task_sn, '加入任务列隊')
         info = '本次更新添加了 '+str(new_tasks_counter)+' 個新任務, 目前列隊中共有 ' + str(len(processing_queue)) + ' 個任務'
         err_print(0, '更新資訊', info, no_sn=True)
-        viz = ('+' * new_tasks_counter) + ('*' * processing_queue)
-        err_print(0, '任務列表', viz, no_sn=True)
         err_print(0, '更新终了', no_sn=True)
         print()
         for i in range(settings['check_frequency'] * 60):
