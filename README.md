@@ -1,7 +1,12 @@
 <h1 align="center">aniGamerPlus</h1>
 
 ## 更動們
-新增 config.json 選項\
+
+4K 尺寸的彈幕（總之就是原本的一半大小，其實還是比動畫瘋網頁 100% 縮放時的彈幕大，但字也看得比較清楚）
+![image](https://github.com/user-attachments/assets/d97a0619-99d1-4af4-b0f8-ce85610a21fb)
+
+
+新增 config.json 選項
 ```json
 {
   "movie_dir": "", // 額外的 `danmu_update` 搜索路徑
