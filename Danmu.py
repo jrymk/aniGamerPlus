@@ -100,7 +100,7 @@ class Danmu():
                 end_time = 0
                 for i in range(len(roll_channel)):
                     if roll_channel[i] <= danmu['time']:
-                        height = i * 54 + 27
+                        height = i * 25 + 12.5
                         roll_channel[i] = danmu['time'] + \
                             (len(text) * roll_time[i]) / 8 + 1
                         end_time = start_time + roll_time[i]
@@ -110,7 +110,7 @@ class Danmu():
                     roll_time.append(random.randint(10, 14))
                     roll_channel[-1] = danmu['time'] + \
                         (len(text) * roll_time[-1]) / 8 + 1
-                    height = len(roll_channel) * 54 - 27
+                    height = len(roll_channel) * 25 - 12.5
                     end_time = start_time + roll_time[-1]
 
                 m, s = divmod(end_time, 60)
