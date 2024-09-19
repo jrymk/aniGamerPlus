@@ -79,6 +79,7 @@ def __init_settings():
     if os.path.exists(config_path):
         os.remove(config_path)
     settings = {'bangumi_dir': '',
+                'movie_dir': '',
                 'temp_dir': '',
                 'classify_bangumi': True,  # 控制是否建立番剧目录
                 'classify_season': False,  # 控制是否建立季度子目录
@@ -807,9 +808,12 @@ def write_settings(web_config):
 
     # 还原配置
     a = os.path.join(working_dir, 'bangumi')  # 默认番剧目录
+    c = os.path.join(working_dir, 'movie')  # 默认番剧目录
     b = os.path.join(working_dir, 'temp')  # 默认缓存目录
     if os.path.normcase(web_config['bangumi_dir']) == os.path.normcase(a):
         web_config["bangumi_dir"] = ''
+    if os.path.normcase(web_config['movie_dir']) == os.path.normcase(c):
+        web_config['movie_dir'] = ''
     if os.path.normcase(web_config['temp_dir']) == os.path.normcase(b):
         web_config['temp_dir'] = ''
     del web_config['working_dir']

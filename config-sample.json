@@ -1,5 +1,6 @@
 {
     "bangumi_dir": "",
+    "movie_dir": "",
     "temp_dir": "",
     "classify_bangumi": true,
     "check_frequency": 5,
