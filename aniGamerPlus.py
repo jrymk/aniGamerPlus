@@ -315,11 +315,13 @@ def worker(sn, sn_info, realtime_show_file_size=False):
 
 def download_cd_counter():
     seconds = settings['download_cd']
-    while(seconds > 0):
-        err_print('', '下載冷卻:', '下載冷卻時間剩餘 ' + str(seconds) + ' 秒', status=0, no_sn=True)
+    err_print('', '下載冷卻:', '下載冷卻 ' + str(seconds) + ' 秒', status=0, no_sn=True)
+
+    while (seconds > 0):
         wait_time = min(30, seconds)
         time.sleep(wait_time)
         seconds -= wait_time
+
     thread_limiter.release()  # 并发下载限制器
 
 
@@ -337,6 +339,8 @@ def extract_sn(filename):
 
 
 def danmu_update(directory):
+    if directory == '':
+        return
     # Convert directory string to a Path object
     path = pathlib.Path(directory)
 
@@ -354,12 +358,14 @@ def danmu_update(directory):
             d = Danmu(sn, ass_path, Config.read_cookie())
             d.download(settings['danmu_ban_words'])
             successes += 1
-    err_print(sn, '彈幕更新任務完成！' + str(successes) + '個彈幕檔案成功更新。', status=2)
+    err_print(0, '彈幕更新任務完成！' + str(successes) +
+              '個彈幕檔案成功更新。', no_sn=True, status=2)
 
 
 def check_tasks():
     if settings['refresh_all_danmu_on_check']:
         danmu_update(settings['bangumi_dir'])
+        danmu_update(settings['movie_dir'])
 
     for sn in sn_dict.keys():
         anime = build_anime(sn)
@@ -537,6 +543,7 @@ def __cui(sn, cui_resolution, cui_download_mode, cui_thread_limit, ep_range,
         print('當前模式: 搜索 ' + settings['bangumi_dir'] +
               ' 以下的所有.ass檔案，重新下載並覆蓋。請注意，檔名中必須有[sn-xxxx]標籤，可以在config.json中添加"add_sn_to_video_filename": true開啟。')
         danmu_update(settings['bangumi_dir'])
+        danmu_update(settings['movie_dir'])
 
     if cui_download_mode == 'single':
         if get_info:
@@ -1083,6 +1090,8 @@ if __name__ == '__main__':
                     err_print(task_sn, '加入任务列隊')
         info = '本次更新添加了 '+str(new_tasks_counter)+' 個新任務, 目前列隊中共有 ' + str(len(processing_queue)) + ' 個任務'
         err_print(0, '更新資訊', info, no_sn=True)
+        viz = ('+' * new_tasks_counter) + ('*' * processing_queue)
+        err_print(0, '任務列表', viz, no_sn=True)
         err_print(0, '更新终了', no_sn=True)
         print()
         for i in range(settings['check_frequency'] * 60):
