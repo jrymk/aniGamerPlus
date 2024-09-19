@@ -36,7 +36,7 @@ def read_log_settings():
 log_settings = read_log_settings()
 
 
-def err_print(sn, err_msg, detail='', status=0, no_sn=False, prefix='', display=True, display_time=True):
+def err_print(sn, err_msg, detail='', status=0, no_sn=False, prefix='', display=True, display_time=False):
     # status 三个设定值, 0 为一般输出, 1 为错误输出, 2 为成功输出
     # err_msg 为信息类型/概要, 最好为四字中文
     # detail 为详细信息描述
