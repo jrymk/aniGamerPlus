@@ -56,7 +56,7 @@ class Anime:
         self._proxies = {}
 
         self.season_title_filter = re.compile('第[零一二三四五六七八九十]{1,3}季$')
-        self.extra_title_filter = re.compile('\[(特別篇|中文配音)\]$')
+        self.extra_title_filter = re.compile('\\[(特別篇|中文配音)\\]$')
 
         if self._settings['use_mobile_api']:
             err_print(sn, '解析模式', 'APP解析', display=False)
@@ -598,6 +598,10 @@ class Anime:
         # 添加分辨率后缀
         if self._settings['add_resolution_to_video_filename']:
             filename = filename + '[' + resolution + 'P]'
+
+        # 添加sn後綴
+        if self._settings['add_sn_to_video_filename']:
+            filename = filename + '[sn-' + self._sn + ']'
 
         if without_suffix:
             return filename  # 截止至清晰度的文件名, 用于 __get_temp_filename()
