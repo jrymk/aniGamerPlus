@@ -1,5 +1,31 @@
 <h1 align="center">aniGamerPlus</h1>
 
+## 更動們
+新增 config.json 選項\
+```json
+{
+  "movie_dir": "", // 額外的 `danmu_update` 搜索路徑
+  "refresh_all_danmu_on_check": true, // 在檢查前更新所有彈幕
+  "add_sn_to_video_filename": true, // 添加sn標籤到檔名
+}
+```
+
+![image](https://github.com/user-attachments/assets/58a85071-df15-42b2-bdc7-7c0d8eea5c9f)
+
+
+可以自動在檔名尾添加 `[sn-12345]` 標籤
+
+如此就可以使用 `danmu_update(path)` 自動掃描 `path` 之下的所有 `.ass` 檔案，讀取其sn並從動畫瘋獲取最新的彈幕。預設將在執行檢查前運行，保證彈幕維持最新。\
+此操作不會花費非常多時間，因為取得彈幕是不需要看廣告的。
+
+這麼做主要的原因是：我實在是沒辦法讓 `aniGamer.db` 的 local file path 維持跟硬碟上的狀態一致，因為為了讓 Jellyfin 讀取正確，我需要移動檔案更改路徑、更改季數集數等等。為此手動更新db會死的。否則原本的確是有個 CLI 指令 `-m db` 可以從資料庫更新所有彈幕。
+
+另外，提供另外一個搜索路徑 `movie_dir`，因為 Jellyfin 中電影要放到另外一個 library 才會去搜尋/使用電影的 metadata，因此你現在可以直接隨意移動檔案資料夾位置了！資料庫中紀錄的 local file path 應該可以忽略了。
+
+
+---
+
+
 <p align="center">
  <img alt="GitHub" src="https://img.shields.io/github/license/miyouzi/aniGamerPlus.svg?style=flat-square">
  <img alt="GitHub release" src="https://img.shields.io/github/release/miyouzi/aniGamerPlus.svg?style=flat-square">
