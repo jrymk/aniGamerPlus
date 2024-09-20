@@ -10,6 +10,8 @@
 
 ### (2) 掃描彈幕更新（檔案無須在原資料夾）
 
+**請注意！** 使用此功能會在短時間送出大量request，雖然不用看廣告、流量也不大，但有可能 IP 會吃 `429 Too many requests` 暫時無法連線，我也不知道對你的 IP 位置或帳號信用有什麼影響。建議最多最多一天跑個兩次就好，可以把檢查頻率改成 12 小時之類的。也可以平常就把 `refresh_all_danmu_on_check` 關閉，等要更新的時候再開一下。目前沒有任何冷卻 throttling 或分批、排程，之後再說。
+
 你看你看 他在更新！\
 ![image](https://github.com/user-attachments/assets/e9dced70-12dc-4efd-a134-a8a1fef14b0d)\
 彈幕現在是最新的了\
