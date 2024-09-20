@@ -345,12 +345,17 @@ def danmu_update(directory):
     path = pathlib.Path(directory)
 
     # Recursively search for all .ass files
-    ass_files = path.rglob('*.ass')  # rglob searches recursively
+    ass_files = list(path.rglob('*.ass'))  # rglob searches recursively
+    total = len(ass_files)
+    err_print('0', 'Total files under ' + directory +
+              ": " + str(total), no_sn=True, status=1)
 
     # Iterate through the generator and print the file paths
     successes = 0
+    scanned = 0
     for ass_file in ass_files:
         ass_path = str(ass_file.resolve())
+        print(ass_path)
         sn = extract_sn(ass_file.name)
         if (sn == None):
             err_print('彈幕更新異常', '番劇檔案sn標籤不存在: ' + ass_path, status=1)
@@ -358,8 +363,16 @@ def danmu_update(directory):
             d = Danmu(sn, ass_path, Config.read_cookie())
             d.download(settings['danmu_ban_words'])
             successes += 1
-    err_print(0, '彈幕更新任務完成！' + str(successes) +
-              '個彈幕檔案成功更新。', no_sn=True, status=2)
+
+        scanned += 1
+        if (scanned % 10 == 0):
+            ticks = int(60 * scanned / total)
+            bar = ">" * ticks + "-" * (60 - ticks)
+            err_print(0, bar + " " + str(scanned) + "/" +
+                      str(total), no_sn=True, status=0)
+
+    err_print(0, '彈幕更新任務完成！已成功在' + directory + "路徑下更新了" + str(successes) +
+              '個彈幕檔案。', no_sn=True, status=2)
 
 
 def check_tasks():
