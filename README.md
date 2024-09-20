@@ -2,10 +2,12 @@
 
 ## 更動們
 
-4K 尺寸的彈幕（總之就是原本的一半大小，其實還是比動畫瘋網頁 100% 縮放時的彈幕大，但字也看得比較清楚）
+### (1) 4K 尺寸的彈幕（總之就是原本的一半大小，其實還是比動畫瘋網頁 100% 縮放時的彈幕大，但字也看得比較清楚）
 ![image](https://github.com/user-attachments/assets/d97a0619-99d1-4af4-b0f8-ce85610a21fb)
 
+---
 
+### (2) 自動彈幕更新（檔案無須在原資料夾）
 新增 config.json 選項
 ```json
 {
@@ -27,9 +29,18 @@
 
 另外，提供另外一個搜索路徑 `movie_dir`，因為 Jellyfin 中電影要放到另外一個 library 才會去搜尋/使用電影的 metadata，因此你現在可以直接隨意移動檔案資料夾位置了！資料庫中紀錄的 local file path 應該可以忽略了。
 
-
 ---
 
+### (3) 季數集數批量更新小工具
+![image](https://github.com/user-attachments/assets/c67489f5-0098-4923-a89c-f15a23a27fbf)
+
+比如說，把目錄下所有檔案 S01E26 改成 S02E01、S01E27 改成 S02E02
+
+---
+---
+---
+
+### 原 readme
 
 <p align="center">
  <img alt="GitHub" src="https://img.shields.io/github/license/miyouzi/aniGamerPlus.svg?style=flat-square">
