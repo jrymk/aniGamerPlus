@@ -1,23 +1,21 @@
 <h1 align="center">aniGamerPlus</h1>
 
-## 更動們
+## jerrymk 做的一點點更動們
 
-### (1) 4K 尺寸的彈幕（總之就是原本的一半大小，其實還是比動畫瘋網頁 100% 縮放時的彈幕大，但字也看得比較清楚）
+### (1) 4K 尺寸的彈幕
+原本的實在是太大了，現在大概長這樣（總之就是原本的一半大小，其實還是比動畫瘋網頁 100% 縮放時的彈幕大，但字也看得比較清楚。然後排列稍稍緊密一點，減少對畫面影響）
 ![image](https://github.com/user-attachments/assets/d97a0619-99d1-4af4-b0f8-ce85610a21fb)
 
 ---
 
-### (2) 自動彈幕更新（檔案無須在原資料夾）
-新增 config.json 選項
-```json
-{
-  "movie_dir": "", // 額外的 `danmu_update` 搜索路徑
-  "refresh_all_danmu_on_check": true, // 在檢查前更新所有彈幕
-  "add_sn_to_video_filename": true, // 添加sn標籤到檔名
-}
-```
+### (2) 掃描彈幕更新（檔案無須在原資料夾）
 
-![image](https://github.com/user-attachments/assets/58a85071-df15-42b2-bdc7-7c0d8eea5c9f)
+**請注意！** 使用此功能會在短時間送出大量request，雖然不用看廣告、流量也不大，但有可能 IP 會吃 `429 Too many requests` 暫時無法連線，我也不知道對你的 IP 位置或帳號信用有什麼影響。建議最多最多一天跑個兩次就好，可以把檢查頻率改成 12 小時之類的。也可以平常就把 `refresh_all_danmu_on_check` 關閉，等要更新的時候再開一下。目前沒有任何冷卻 throttling 或分批、排程，之後再說。
+
+你看你看 他在更新！\
+![image](https://github.com/user-attachments/assets/e9dced70-12dc-4efd-a134-a8a1fef14b0d)\
+彈幕現在是最新的了\
+![image](https://github.com/user-attachments/assets/541c8317-92f0-4093-8e85-ea9767082b87)
 
 
 可以自動在檔名尾添加 `[sn-12345]` 標籤
@@ -29,14 +27,24 @@
 
 另外，提供另外一個搜索路徑 `movie_dir`，因為 Jellyfin 中電影要放到另外一個 library 才會去搜尋/使用電影的 metadata，因此你現在可以直接隨意移動檔案資料夾位置了！資料庫中紀錄的 local file path 應該可以忽略了。
 
+新增 config.json 選項
+```cpp
+{
+  "movie_dir": "", // 額外的 `danmu_update` 搜索路徑
+  "refresh_all_danmu_on_check": true, // 在檢查前更新所有彈幕
+  "add_sn_to_video_filename": true, // 添加sn標籤到檔名（必須開啟才能使用掃描彈幕更新功能）
+}
+```
+
 ---
 
 ### (3) 季數集數批量更新小工具
 ![image](https://github.com/user-attachments/assets/c67489f5-0098-4923-a89c-f15a23a27fbf)
 
-比如說，把目錄下所有檔案 S01E26 改成 S02E01、S01E27 改成 S02E02
+比如說，把目錄下所有檔案 S01E26 改成 S02E01、S01E27 改成 S02E02。剛好配合`*.ass`檔案`sn`標籤掃描，仍可正確更新彈幕。
 
-第二季標為 S01E13 或者 S02E01 取決於你使用的 metadata provider 怎麼標，比如 TMDB 將 Spy x Family 分為兩季、而水星的魔女分為一季。
+第二季標為 S01E13 或者 S02E01 取決於你使用的 metadata provider 怎麼標，比如 theMovieDB 將 SPY X FAMILY 分為兩季、而水星的魔女分為一季。
+
 
 ---
 ---
