@@ -84,7 +84,10 @@ def __init_settings():
                 'classify_bangumi': True,  # 控制是否建立番剧目录
                 'classify_season': False,  # 控制是否建立季度子目录
                 'check_frequency': 5,  # 检查 cd 时间, 单位分钟
-                'refresh_all_danmu_on_check': True,  # 在檢查前刷新所有彈幕檔案
+                'refresh_danmu_when_checking_update': True,  # 在檢查前掃描所有彈幕檔案並更新
+                # 每次更新彈幕最多更新幾集（太多會吃 429 Too many requests）
+                'refresh_danmu_episodes_per_session': 50,
+                'refresh_danmu_age_threshold_hrs': 24,  # 只更新過舊的彈幕檔案，單位小時
                 'download_cd': 60,  # 下載冷卻時間(秒)
                 'parse_sn_cd': 5,  # sn 页面(即播放界面)解析冷却时间
                 'download_resolution': '1080',  # 下载分辨率

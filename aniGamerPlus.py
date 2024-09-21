@@ -6,6 +6,8 @@
 # @Software: PyCharm
 
 # 非阻塞 (Web)
+from datetime import datetime, timedelta
+import time
 import pathlib
 from gevent import monkey
 monkey.patch_all()
@@ -341,23 +343,42 @@ def extract_sn(filename):
 def danmu_update(directory):
     if directory == '':
         return
+
     # Convert directory string to a Path object
     path = pathlib.Path(directory)
 
     # Recursively search for all .ass files
     ass_files = list(path.rglob('*.ass'))  # rglob searches recursively
     total = len(ass_files)
-    err_print('0', 'Total files under ' + directory +
-              ": " + str(total), no_sn=True, status=1)
 
-    # Iterate through the generator and print the file paths
+    # Calculate the age threshold in hours
+    age_threshold = timedelta(
+        hours=settings['refresh_danmu_age_threshold_hrs'])
+    now = datetime.now()
+
+    # Filter files that are older than the threshold
+    filtered_files = [f for f in ass_files if (
+        now - datetime.fromtimestamp(f.stat().st_mtime)) >= age_threshold]
+
+    # Sort the files by modified date (most recent first)
+    filtered_files.sort(key=lambda f: f.stat().st_mtime, reverse=False)
+
+    # Iterate through the files and process them
     successes = 0
     scanned = 0
-    for ass_file in ass_files:
+    total_to_update = len(filtered_files)
+
+    err_print('0', '路徑' + directory +
+              "下共計" + str(total) + "個.ass檔案，其中有" + str(len(filtered_files)) + "個檔案過舊，符合更新條件。", no_sn=True, status=1)
+
+    for ass_file in filtered_files:
+        if successes >= settings['refresh_danmu_episodes_per_session']:
+            break  # Stop processing if we've reached the episode update limit
+
         ass_path = str(ass_file.resolve())
         print(ass_path)
         sn = extract_sn(ass_file.name)
-        if (sn == None):
+        if sn is None:
             err_print('彈幕更新異常', '番劇檔案sn標籤不存在: ' + ass_path, status=1)
         else:
             d = Danmu(sn, ass_path, Config.read_cookie())
@@ -365,18 +386,18 @@ def danmu_update(directory):
             successes += 1
 
         scanned += 1
-        if (scanned % 10 == 0):
-            ticks = int(60 * scanned / total)
-            bar = ">" * ticks + "-" * (60 - ticks)
-            err_print(0, bar + " " + str(scanned) + "/" +
-                      str(total), no_sn=True, status=0)
+        ticks = int(80 * scanned / total_to_update)
+        bar = ">" * ticks + "-" * (80 - ticks)
+        err_print(0, bar + " " + str(scanned) + "/" +
+                  str(total_to_update), no_sn=True, status=0)
 
-    err_print(0, '彈幕更新任務完成！已成功在' + directory + "路徑下更新了" + str(successes) +
-              '個彈幕檔案。', no_sn=True, status=2)
+    err_print(0, '彈幕更新任務完成！已成功在' + directory + "路徑下更新了" +
+              str(successes) + '個彈幕檔案。', no_sn=True, status=2)
+
 
 
 def check_tasks():
-    if settings['refresh_all_danmu_on_check']:
+    if settings['refresh_danmu_when_checking_update']:
         danmu_update(settings['bangumi_dir'])
         danmu_update(settings['movie_dir'])
 
