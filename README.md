@@ -10,10 +10,8 @@
 
 ### (2) 掃描彈幕更新（檔案無須在原資料夾）
 
-**請注意！** 使用此功能會在短時間送出大量request，雖然不用看廣告、流量也不大，但有可能 IP 會吃 `429 Too many requests` 暫時無法連線，我也不知道對你的 IP 位置或帳號信用有什麼影響。建議最多最多一天跑個兩次就好，可以把檢查頻率改成 12 小時之類的。也可以平常就把 `refresh_all_danmu_on_check` 關閉，等要更新的時候再開一下。目前沒有任何冷卻 throttling 或分批、排程，之後再說。
+![image](https://github.com/user-attachments/assets/7f34c4c0-23e5-4900-bb42-e88576458cc8)
 
-你看你看 他在更新！\
-![image](https://github.com/user-attachments/assets/e9dced70-12dc-4efd-a134-a8a1fef14b0d)\
 彈幕現在是最新的了\
 ![image](https://github.com/user-attachments/assets/541c8317-92f0-4093-8e85-ea9767082b87)
 
@@ -31,7 +29,9 @@
 ```cpp
 {
   "movie_dir": "", // 額外的 `danmu_update` 搜索路徑
-  "refresh_all_danmu_on_check": true, // 在檢查前更新所有彈幕
+  "refresh_danmu_when_checking_update": true, // 在檢查前掃描所有彈幕檔案並更新
+  "refresh_danmu_episodes_per_session": 50, // 每次更新彈幕最多更新幾集（太多會吃 429 Too many requests）（目前bangumi跟movie dir的更新數量不共用，因此設50最多可能更到100個）
+  "refresh_danmu_age_threshold_hrs": 24, // 只更新過舊的彈幕檔案，單位小時
   "add_sn_to_video_filename": true, // 添加sn標籤到檔名（必須開啟才能使用掃描彈幕更新功能）
 }
 ```
