@@ -360,7 +360,7 @@ def danmu_update(directory):
     filtered_files = [f for f in ass_files if (
         now - datetime.fromtimestamp(f.stat().st_mtime)) >= age_threshold]
 
-    # Sort the files by modified date (most recent first)
+    # Sort the files by modified date (oldest first)
     filtered_files.sort(key=lambda f: f.stat().st_mtime, reverse=False)
 
     # Iterate through the files and process them
