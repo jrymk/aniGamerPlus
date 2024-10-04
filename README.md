@@ -50,8 +50,7 @@
 ### (4) 跳過中文配音
 如果終究不會看的，就不用下載了吧
 
-![image](https://github.com/user-attachments/assets/9aa0beff-ac42-4708-bc9e-42e594e2c1f3)
-
+![image](https://github.com/user-attachments/assets/cb27a31e-34f1-478f-b081-f21d5873ffcf)
 
 新增 config.json 選項
 ```cpp
