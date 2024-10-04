@@ -412,9 +412,21 @@ def check_tasks():
             continue
         anime = anime['anime']
         err_print(sn, '更新資訊', '正在檢查《' + anime.get_bangumi_name() + '》')
-        episode_list = list(anime.get_episode_list().values())
+
+        ep_list_dict = anime.get_episode_list()
 
         if sn_dict[sn]['mode'] == 'all':
+            # episode_list is anime.get_episode_list().values() where the key does not include "中文配音" IF settings['skip_chinese_dub'] is True
+            if settings['skip_chinese_dub']:
+                episode_list = [
+                    ep for key, ep in ep_list_dict.items() if "中文配音" not in key]
+                # if anything is actually filtered, print a notice
+                if len(episode_list) != len(ep_list_dict):
+                    err_print(0, '更新狀態', '使用all下載模式並偵測到中文配音，根據用戶設定跳過下載' + str(len(ep_list_dict) - len(episode_list)) + '個中配集數',
+                              status=0, no_sn=True)
+            else:
+                episode_list = list(ep_list_dict.values())
+
             # 如果用户选择全部下载 download_mode = 'all'
             for ep in episode_list:  # 遍历剧集列表
                 try:
@@ -435,6 +447,7 @@ def check_tasks():
                     insert_db(new_anime)
                     queue[ep] = sn_dict[sn]  # 添加至列队
         else:
+            episode_list = list(anime.get_episode_list().values())
             if sn_dict[sn]['mode'] == 'largest-sn':
                 # 如果用户选择仅下载最新上传, download_mode = 'largest_sn', 则对 sn 进行排序
                 episode_list.sort()

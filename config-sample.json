@@ -7,6 +7,7 @@
     "refresh_danmu_when_checking_update": true,
     "refresh_danmu_episodes_per_session": 50,
     "refresh_danmu_age_threshold_hrs": 12,
+    "skip_chinese_dub": true,
     "download_cd": 60,
     "parse_sn_cd": 3,
     "download_resolution": "1080",

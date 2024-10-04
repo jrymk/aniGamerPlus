@@ -88,6 +88,7 @@ def __init_settings():
                 # 每次更新彈幕最多更新幾集（太多會吃 429 Too many requests）
                 'refresh_danmu_episodes_per_session': 50,
                 'refresh_danmu_age_threshold_hrs': 24,  # 只更新過舊的彈幕檔案，單位小時
+                'skip_chinese_dub': True,  # 略過中文配音，僅適用 all 下載模式（不包括中文電影，僅下載日文電影請使用 single 模式）
                 'download_cd': 60,  # 下載冷卻時間(秒)
                 'parse_sn_cd': 5,  # sn 页面(即播放界面)解析冷却时间
                 'download_resolution': '1080',  # 下载分辨率
