@@ -420,7 +420,7 @@ def check_tasks():
                   '》，模式為 ' + sn_dict[sn]['mode'])
 
         ep_list_dict = anime.get_episode_list()
-        print(ep_list_dict)
+        # print(ep_list_dict)
         if sn_dict[sn]['mode'] == 'all':
             # episode_list is anime.get_episode_list().values() where the key does not include "中文配音" IF settings['skip_chinese_dub'] is True
             if settings['skip_chinese_dub']:
@@ -428,8 +428,19 @@ def check_tasks():
                     ep for key, ep in ep_list_dict.items() if "中文配音" not in key]
                 # if anything is actually filtered, print a notice
                 if len(episode_list) != len(ep_list_dict):
-                    err_print(0, '更新狀態', ' 使用all下載模式並偵測到中文配音，根據用戶設定跳過下載 ' + str(len(ep_list_dict) - len(episode_list)) + ' 個中配集數',
+                    err_print(0, '更新狀態', ' 使用all下載模式並偵測到中文配音，根據用戶設定跳過下載 ' + str(len(ep_list_dict) - len(episode_list)) + ' 個中文配音集數',
                               status=0, no_sn=True)
+
+                # only skip 中文電影 if the corresponding 電影 exists (Japanese dub)
+                for key, ep in ep_list_dict.items():
+                    # if key starts with 中文電影
+                    if key.startswith("中文電影"):
+                        # if there is a corresponding episode in Japanese dub, skip 中文電影
+                        if "電影" + key[4:] in ep_list_dict.keys():
+                            episode_list.remove(ep)
+                            err_print(0, '更新狀態', ' 使用all下載模式並偵測到中文電影與其對應的原版電影，根據用戶設定跳過下載 ' + key,
+                                      status=0, no_sn=True)
+
             else:
                 episode_list = list(ep_list_dict.values())
 
