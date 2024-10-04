@@ -30,7 +30,7 @@
 {
   "movie_dir": "", // 額外的 `danmu_update` 搜索路徑
   "refresh_danmu_when_checking_update": true, // 在檢查前掃描所有彈幕檔案並更新
-  "refresh_danmu_episodes_per_session": 50, // 每次更新彈幕最多更新幾集（太多會吃 429 Too many requests）（目前bangumi跟movie dir的更新數量不共用，因此設50最多可能更到100個）
+  "refresh_danmu_episodes_per_session": 50, // 每次更新彈幕最多更新幾集（太多會吃 429 Too many requests）
   "refresh_danmu_age_threshold_hrs": 24, // 只更新過舊的彈幕檔案，單位小時
   "add_sn_to_video_filename": true, // 添加sn標籤到檔名（必須開啟才能使用掃描彈幕更新功能）
 }
@@ -54,8 +54,28 @@
 
 新增 config.json 選項
 ```cpp
-  'skip_chinese_dub': True,  # 略過中文配音，僅適用 all 下載模式（不包括中文電影，僅下載日文電影請使用 single 模式）
+  "skip_chinese_dub": true,  # 略過中文配音，僅適用 all 下載模式（不包括中文電影，僅下載日文電影請使用 single 模式）
 ```
+
+### (5) 解析度升級重新下載
+當指定解析度比已下載的解析度高時，重新下載。\
+若片源僅720P而設定目標解析度1080P，則該影片可能會一直被拉回下載駐列，因此建議開啟 `lock_resolution` 鎖定解析度功能，使沒有1080P片源的影片直接跳過下載。\
+若要避免每次檢查皆放入任務列表，可將其 sn 從 `sn_list` 中移除，但更建議的做法是平常就別把 `exists_resolution_upgrade` 給打開。
+
+
+```cpp
+  "exists_resolution_upgrade": true,
+```
+
+---
+
+### 偵錯輸出 更改總覽
+![image](https://github.com/user-attachments/assets/2e8848a5-97d9-4f0c-82e6-3e3c7c32377f)
+
+- 更新彈幕功能
+- 升級解析度功能
+- 跳過中文配音功能
+- 顯示cd結束時間，而非在log裡面刷一整排 剩多少秒 剩多少秒
 
 ## 怎麼跑？
 
