@@ -92,6 +92,7 @@ def __init_settings():
                 'download_cd': 60,  # 下載冷卻時間(秒)
                 'parse_sn_cd': 5,  # sn 页面(即播放界面)解析冷却时间
                 'download_resolution': '1080',  # 下载分辨率
+                'exists_resolution_upgrade': True,  # 若影片已下載，當設定的分辨率大於既有影片時，是否重新下載
                 'lock_resolution': False,  # 锁定分辨率, 如果分辨率不存在, 则宣布下载失败
                 'only_use_vip': False,  # 锁定 VIP 账号下载
                 'default_download_mode': 'latest',  # 仅下载最新一集，另一个模式是 'all' 下载所有及日后更新

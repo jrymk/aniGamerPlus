@@ -6,6 +6,7 @@
 # @Software: PyCharm
 
 # 非阻塞 (Web)
+import pytz
 from datetime import datetime, timedelta
 import time
 import pathlib
@@ -27,6 +28,7 @@ from Anime import Anime, TryTooManyTimeError
 from ColorPrint import err_print
 from Danmu import Danmu
 
+tz = pytz.timezone('Asia/Taipei')
 
 def port_is_available(port):
     # 检测端口是否可用(未占用), 可用返回 True
@@ -319,7 +321,7 @@ def worker(sn, sn_info, realtime_show_file_size=False):
 def download_cd_counter():
     seconds = settings['download_cd']
     # print the cooldown duration and when it will start again
-    err_print('', '下載冷卻:', '下載冷卻 ' + str(seconds) + ' 秒，下載將在 ' + (datetime.now() +
+    err_print('', '下載冷卻:', '下載冷卻 ' + str(seconds) + ' 秒，下載將在 ' + (datetime.now(tz) +
               timedelta(seconds=seconds)).strftime('%Y-%m-%d %H:%M:%S') + ' 開始', status=0, no_sn=True)
 
     while (seconds > 0):
@@ -375,8 +377,8 @@ def danmu_update(directories=[]):
     scanned = 0
     total_to_update = len(ass_files)
 
-    err_print('0', '路徑' + directory +
-              "下共計" + str(ass_files) + "個有[sn-xxxx]標籤的.ass檔案過舊，符合更新條件。", no_sn=True, status=1)
+    err_print('0', '路徑' + str(directories) +
+              "下共計" + str(total_to_update) + "個有[sn-xxxx]標籤的.ass檔案過舊，符合更新條件。", no_sn=True, status=1)
 
     for ass_file in ass_files:
         if scanned >= settings['refresh_danmu_episodes_per_session']:
@@ -448,9 +450,16 @@ def check_tasks():
             for ep in episode_list:  # 遍历剧集列表
                 try:
                     db = read_db(ep)
-                    #           未下载的   或                设定要上传但是没上传的                         并且  还没在列队中
-                    if (db['status'] == 0 or (db['remote_status'] == 0 and settings['upload_to_server'])) and ep not in queue.keys():
+                    if (db['status'] == 0  # 未下載的
+                            # 或者存在分辨率升级
+                            or (settings['exists_resolution_upgrade'] and int(db['resolution']) < int(settings['download_resolution']))
+                            # 或者设定要上传但是没上传的
+                        or (db['remote_status'] == 0 and settings['upload_to_server'])
+                        ) and ep not in queue.keys():
                         queue[ep] = sn_dict[sn]  # 添加至下载列队
+                        if (db['status'] == 1 and int(db['resolution']) < int(settings['download_resolution'])):
+                            err_print(0, "更新狀態", "升級分辨率至" + str(settings['download_resolution']) + "，ep=" + str(ep) +
+                                      " 將被重新下載", status=0, no_sn=True)
                 except IndexError:
                     # 如果数据库中尚不存在此条记录
                     if anime.get_sn() == ep:
@@ -476,9 +485,16 @@ def check_tasks():
                 latest_sn = episode_list[-1]
             try:
                 db = read_db(latest_sn)
-                #           未下载的   或                设定要上传但是没上传的                         并且  还没在列队中
-                if (db['status'] == 0 or (db['remote_status'] == 0 and settings['upload_to_server'])) and latest_sn not in queue.keys():
+                if (db['status'] == 0  # 未下載的
+                            # 或者存在分辨率升级
+                            or (settings['exists_resolution_upgrade'] and int(db['resolution']) < int(settings['download_resolution']))
+                            # 或者设定要上传但是没上传的
+                        or (db['remote_status'] == 0 and settings['upload_to_server'])
+                        ) and latest_sn not in queue.keys():
                     queue[latest_sn] = sn_dict[sn]  # 添加至下载列队
+                    if (db['status'] == 1 and int(db['resolution']) < int(settings['download_resolution'])):
+                        err_print(0, "更新狀態", "升級分辨率至" + str(settings['download_resolution']) + "，ep=" + str(ep) +
+                                  " 將被重新下載", status=0, no_sn=True)
             except IndexError:
                 # 如果数据库中尚不存在此条记录
                 if anime.get_sn() == latest_sn:
@@ -512,7 +528,8 @@ def __download_only(sn, dl_resolution='', dl_save_dir='', realtime_show_file_siz
         if dl_resolution:
             anime.download(dl_resolution, dl_save_dir, realtime_show_file_size=realtime_show_file_size, classify=classify)
         else:
-            anime.download(settings['download_resolution'], dl_save_dir, realtime_show_file_size=realtime_show_file_size, classify=classify)
+            anime.download(settings['download_resolution'], dl_save_dir,
+                           realtime_show_file_size=realtime_show_file_size, classify=classify)
     except BaseException as e:
         err_print(sn, '下載異常', '發生未知異常: ' + str(e), status=1)
         err_print(sn, '下載異常', '異常詳情:\n'+traceback.format_exc(), status=1, display=False)

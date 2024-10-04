@@ -8,7 +8,8 @@ services:
     image: anigamerplus
     container_name: "ani-gamer-plus"
     volumes:
-      - "./downloads:/app/bangumi"
+      - ./downloads:/app/bangumi
+      - /etc/localtime:/etc/localtime:ro
       - type: bind
         source: ./config.json
         target: /app/config.json

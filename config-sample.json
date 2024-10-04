@@ -11,6 +11,7 @@
     "download_cd": 60,
     "parse_sn_cd": 3,
     "download_resolution": "1080",
+    "exists_resolution_upgrade": false,
     "lock_resolution": false,
     "only_use_vip": false,
     "default_download_mode": "latest",

@@ -975,7 +975,8 @@ class Anime:
         if resolution not in self._m3u8_dict.keys():
             if self._settings['lock_resolution']:
                 # 如果用户设定锁定清晰度, 則下載取消
-                err_msg_detail = '指定清晰度不存在, 因當前鎖定了清晰度, 下載取消. 可用的清晰度: ' + 'P '.join(self._m3u8_dict.keys()) + 'P'
+                err_msg_detail = '指定清晰度' + str(resolution) + '不存在, 因當前鎖定了清晰度, 下載取消. 可用的清晰度: ' + \
+                    ' '.join(self._m3u8_dict.keys())
                 err_print(self._sn, '任務狀態', err_msg_detail, status=1)
                 return
 
