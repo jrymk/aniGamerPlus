@@ -202,35 +202,45 @@ class Anime:
         if self._settings['use_mobile_api']:
             for _type in self._src['data']['anime']['volumes']:
                 for _sn in self._src['data']['anime']['volumes'][_type]:
-                    if _type == '0': # 本篇
+                    if _type == '0':  # 本篇
                         self._episode_list[str(_sn['volume'])] = int(_sn["video_sn"])
-                    elif _type == '1': # 電影
+                    elif _type == '1':  # 電影
                         self._episode_list['電影'] = int(_sn["video_sn"])
-                    elif _type == '2': # 特別篇
+                    elif _type == '2':  # 特別篇
                         self._episode_list[f'特別篇{_sn["volume"]}'] = int(_sn["video_sn"])
-                    elif _type == '3': # 中文配音
+                    elif _type == '3':  # 中文配音
                         self._episode_list[f'中文配音{_sn["volume"]}'] = int(_sn["video_sn"])
-                    else: # 中文電影
+                    else:  # 中文電影
                         self._episode_list['中文電影'] = int(_sn["video_sn"])
         else:
             try:
-                a = self._src.find('section', 'season').find_all('a')
-                p = self._src.find('section', 'season').find_all('p')
-                # https://github.com/miyouzi/aniGamerPlus/issues/9
-                # 样本 https://ani.gamer.com.tw/animeVideo.php?sn=10210
-                # 20190413 动画疯将特别篇分离
-                index_counter = {}  # 记录剧集数字重复次数, 用作列表类型的索引 ('本篇', '特別篇')
-                if len(p) > 0:
-                    p = list(map(lambda x: x.contents[0], p))
-                for i in a:
-                    sn = int(i['href'].replace('?sn=', ''))
-                    ep = str(i.string)
-                    if ep not in index_counter.keys():
-                        index_counter[ep] = 0
-                    if ep in self._episode_list.keys():
-                        index_counter[ep] = index_counter[ep] + 1
-                        ep = p[index_counter[ep]] + ep
-                    self._episode_list[ep] = sn
+                # Find the section with class 'season'
+                season_section = self._src.find('section', 'season')
+                if not season_section:
+                    # Handle the single episode case
+                    self._episode_list[self._episode] = self._sn
+                    return
+
+                # Initialize the current category
+                current_category = None
+
+                # Check if there are <p> tags for categories
+                has_categories = bool(season_section.find('p'))
+
+                # Iterate through the children of the season section
+                for child in season_section.children:
+                    if child.name == 'p':
+                        # Update the current category
+                        current_category = child.text
+                    elif child.name == 'ul':
+                        # Iterate through 'a' tags within the 'ul'
+                        for a_tag in child.find_all('a'):
+                            sn = int(a_tag['href'].replace('?sn=', ''))
+                            ep = str(a_tag.string)
+                            if has_categories and current_category:
+                                ep = current_category + ep
+                            self._episode_list[ep] = sn
+
             except AttributeError:
                 # 当只有一集时，不存在剧集列表，self._episode_list 只有本身
                 self._episode_list[self._episode] = self._sn

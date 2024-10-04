@@ -25,7 +25,7 @@ class Danmu():
         # 確認不是匹配到空字串
         return result and result.group(0)
 
-    def download(self, ban_words):
+    def download(self, ban_words) -> bool:
         h = {
             'Content-Type':
             'application/x-www-form-urlencoded;charset=utf-8',
@@ -41,8 +41,9 @@ class Danmu():
             'https://ani.gamer.com.tw/ajax/danmuGet.php', data=data, headers=h)
 
         if r.status_code != 200:
-            err_print(self._sn, '彈幕下載失敗', 'status_code=' + str(r.status_code), status=1)
-            return
+            err_print(self._sn, '彈幕下載失敗', 'status_code=' +
+                      str(r.status_code) + '，該影片可能已經下架，或 sn 有誤。若要停止掃描該影片，可將 [sn-xxxx] 標籤移除。', status=1)
+            return False
 
         h = {
             'accept':
@@ -138,7 +139,7 @@ class Danmu():
             output.write('\n')
 
         err_print(self._sn, '彈幕下載完成', self._full_filename, status=2)
-
+        return True
 
 if __name__ == '__main__':
     pass

@@ -49,6 +49,7 @@ def gost_port():
 
 
 def build_anime(sn):
+    err_print(sn, '更新資訊', '正在檢查集數資訊', status=0)
     anime = {'anime': None, 'failed': True}
     try:
         if settings['use_gost']:
@@ -69,7 +70,7 @@ def build_anime(sn):
 
     # sn 解析冷却
     if settings['parse_sn_cd'] > 0:
-        err_print("更新資訊", "SN 解析冷卻 " + str(settings['parse_sn_cd']) + " 秒", no_sn=True)
+        # err_print("更新資訊", "SN 解析冷卻 " + str(settings['parse_sn_cd']) + " 秒", no_sn=True)
         time.sleep(settings['parse_sn_cd'])
 
     return anime
@@ -317,7 +318,9 @@ def worker(sn, sn_info, realtime_show_file_size=False):
 
 def download_cd_counter():
     seconds = settings['download_cd']
-    err_print('', '下載冷卻:', '下載冷卻 ' + str(seconds) + ' 秒', status=0, no_sn=True)
+    # print the cooldown duration and when it will start again
+    err_print('', '下載冷卻:', '下載冷卻 ' + str(seconds) + ' 秒，下載將在 ' + (datetime.now() +
+              timedelta(seconds=seconds)).strftime('%Y-%m-%d %H:%M:%S') + ' 開始', status=0, no_sn=True)
 
     while (seconds > 0):
         wait_time = min(30, seconds)
@@ -340,16 +343,16 @@ def extract_sn(filename):
     return None
 
 
-def danmu_update(directory):
-    if directory == '':
-        return
+def danmu_update(directories=[]):
+    # Update danmu files in the specified directories
+    ass_files = []
 
-    # Convert directory string to a Path object
-    path = pathlib.Path(directory)
+    for directory in directories:
+        # Convert directory string to a Path object
+        path = pathlib.Path(directory)
 
-    # Recursively search for all .ass files
-    ass_files = list(path.rglob('*.ass'))  # rglob searches recursively
-    total = len(ass_files)
+        # Recursively search for all .ass files
+        ass_files.extend(list(path.rglob('*.ass')))
 
     # Calculate the age threshold in hours
     age_threshold = timedelta(
@@ -357,32 +360,34 @@ def danmu_update(directory):
     now = datetime.now()
 
     # Filter files that are older than the threshold
-    filtered_files = [f for f in ass_files if (
+    ass_files = [f for f in ass_files if (
         now - datetime.fromtimestamp(f.stat().st_mtime)) >= age_threshold]
 
     # Sort the files by modified date (oldest first)
-    filtered_files.sort(key=lambda f: f.stat().st_mtime, reverse=False)
+    ass_files.sort(key=lambda f: f.stat().st_mtime, reverse=False)
+
+    # filter filtered_files where extract_sn(ass_file.name) is not None
+    ass_files = [f for f in ass_files if extract_sn(f.name) is not None]
+
 
     # Iterate through the files and process them
     successes = 0
     scanned = 0
-    total_to_update = len(filtered_files)
+    total_to_update = len(ass_files)
 
     err_print('0', '路徑' + directory +
-              "下共計" + str(total) + "個.ass檔案，其中有" + str(len(filtered_files)) + "個檔案過舊，符合更新條件。", no_sn=True, status=1)
+              "下共計" + str(ass_files) + "個有[sn-xxxx]標籤的.ass檔案過舊，符合更新條件。", no_sn=True, status=1)
 
-    for ass_file in filtered_files:
-        if successes >= settings['refresh_danmu_episodes_per_session']:
+    for ass_file in ass_files:
+        if scanned >= settings['refresh_danmu_episodes_per_session']:
             break  # Stop processing if we've reached the episode update limit
 
         ass_path = str(ass_file.resolve())
         print(ass_path)
         sn = extract_sn(ass_file.name)
-        if sn is None:
-            err_print('彈幕更新異常', '番劇檔案sn標籤不存在: ' + ass_path, status=1)
-        else:
-            d = Danmu(sn, ass_path, Config.read_cookie())
-            d.download(settings['danmu_ban_words'])
+
+        d = Danmu(sn, ass_path, Config.read_cookie())
+        if d.download(settings['danmu_ban_words']):
             successes += 1
 
         scanned += 1
@@ -398,8 +403,8 @@ def danmu_update(directory):
 
 def check_tasks():
     if settings['refresh_danmu_when_checking_update']:
-        danmu_update(settings['bangumi_dir'])
-        danmu_update(settings['movie_dir'])
+        danmu_update(
+            directories=[settings['bangumi_dir'], settings['movie_dir']])
 
     for sn in sn_dict.keys():
         anime = build_anime(sn)
@@ -411,10 +416,11 @@ def check_tasks():
             #     time.sleep(settings['parse_sn_cd'])
             continue
         anime = anime['anime']
-        err_print(sn, '更新資訊', '正在檢查《' + anime.get_bangumi_name() + '》')
+        err_print(sn, '更新資訊', '正在檢查《' + anime.get_bangumi_name() +
+                  '》，模式為 ' + sn_dict[sn]['mode'])
 
         ep_list_dict = anime.get_episode_list()
-
+        print(ep_list_dict)
         if sn_dict[sn]['mode'] == 'all':
             # episode_list is anime.get_episode_list().values() where the key does not include "中文配音" IF settings['skip_chinese_dub'] is True
             if settings['skip_chinese_dub']:
@@ -422,7 +428,7 @@ def check_tasks():
                     ep for key, ep in ep_list_dict.items() if "中文配音" not in key]
                 # if anything is actually filtered, print a notice
                 if len(episode_list) != len(ep_list_dict):
-                    err_print(0, '更新狀態', '使用all下載模式並偵測到中文配音，根據用戶設定跳過下載' + str(len(ep_list_dict) - len(episode_list)) + '個中配集數',
+                    err_print(0, '更新狀態', ' 使用all下載模式並偵測到中文配音，根據用戶設定跳過下載 ' + str(len(ep_list_dict) - len(episode_list)) + ' 個中配集數',
                               status=0, no_sn=True)
             else:
                 episode_list = list(ep_list_dict.values())
@@ -589,9 +595,8 @@ def __cui(sn, cui_resolution, cui_download_mode, cui_thread_limit, ep_range,
     if cui_download_mode == 'danmu-update':
         print('當前模式: 搜索 ' + settings['bangumi_dir'] +
               ' 以下的所有.ass檔案，重新下載並覆蓋。請注意，檔名中必須有[sn-xxxx]標籤，可以在config.json中添加"add_sn_to_video_filename": true開啟。')
-        danmu_update(settings['bangumi_dir'])
-        danmu_update(settings['movie_dir'])
-
+        danmu_update(
+            directories=[settings['bangumi_dir'], settings['movie_dir']])
     if cui_download_mode == 'single':
         if get_info:
             print('當前模式: 查詢本集資訊\n')
@@ -1134,10 +1139,13 @@ if __name__ == '__main__':
                     task.start()
                     processing_queue.append(task_sn)
                     new_tasks_counter = new_tasks_counter + 1
-                    err_print(task_sn, '加入任务列隊')
-        info = '本次更新添加了 '+str(new_tasks_counter)+' 個新任務, 目前列隊中共有 ' + str(len(processing_queue)) + ' 個任務'
+                    # err_print(task_sn, '加入任務列隊')
+            # print all of the task_sns as a list
+            err_print(0, '任務列隊', str(list(queue.keys())), no_sn=True, status=0)
+        info = '本次更新添加了 ' + str(new_tasks_counter) + \
+            ' 個新任務, 目前列隊中共有 ' + str(len(processing_queue)) + ' 個任務'
         err_print(0, '更新資訊', info, no_sn=True)
-        err_print(0, '更新终了', no_sn=True)
+        err_print(0, '更新完成', no_sn=True)
         print()
         for i in range(settings['check_frequency'] * 60):
             time.sleep(1)  # cool down, 這麽寫是爲了可以 Ctrl+C 馬上退出
