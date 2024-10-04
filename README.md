@@ -45,6 +45,17 @@
 
 第二季標為 S01E13 或者 S02E01 取決於你使用的 metadata provider 怎麼標，比如 theMovieDB 將 SPY X FAMILY 分為兩季、而水星的魔女分為一季。
 
+---
+
+### (4) 跳過中文配音
+如果終究不會看的，就不用下載了吧
+
+![image](https://github.com/user-attachments/assets/ad3d0e07-118d-447e-919c-1dfaa3e66ff6)
+
+新增 config.json 選項
+```cpp
+  'skip_chinese_dub': True,  # 略過中文配音，僅適用 all 下載模式（不包括中文電影，僅下載日文電影請使用 single 模式）
+```
 
 ---
 ---
