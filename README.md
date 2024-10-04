@@ -57,6 +57,23 @@
   'skip_chinese_dub': True,  # 略過中文配音，僅適用 all 下載模式（不包括中文電影，僅下載日文電影請使用 single 模式）
 ```
 
+## 怎麼跑？
+
+在repo目錄下（同Dockerfile的目錄）執行
+```bash
+docker build -t anigamerplus .
+```
+
+![image](https://github.com/user-attachments/assets/cf505565-9c67-4646-9ea1-5e0f07b3bef6)
+
+
+然後在docker-compose.yaml目錄下執行
+```bash
+docker-compose up -d
+```
+
+![image](https://github.com/user-attachments/assets/81847ca7-f0db-4d36-9e2d-0f1d70a05434)
+
 ---
 ---
 ---
