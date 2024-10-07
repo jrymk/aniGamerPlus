@@ -10,7 +10,14 @@ import Config
 import pyhttpx
 from Danmu import Danmu
 from bs4 import BeautifulSoup
-import re, time, os, platform, subprocess, requests, random, sys
+import re
+import time
+import os
+import platform
+import subprocess
+import requests
+import random
+import sys
 from ColorPrint import err_print
 from ftplib import FTP, FTP_TLS
 import socket
@@ -81,20 +88,14 @@ class Anime:
             # 需要使用 gost 的情况, 代理到 gost
             os.environ['HTTP_PROXY'] = 'http://127.0.0.1:' + self._gost_port
             os.environ['HTTPS_PROXY'] = 'http://127.0.0.1:' + self._gost_port
-            self._proxies = {'https': '127.0.0.1:' + self._gost_port,
-                             'http': '127.0.0.1:' + self._gost_port}
+            self._proxies = {'https': 'http://127.0.0.1:' + self._gost_port,
+                             'http': 'http://127.0.0.1:' + self._gost_port}
         else:
             # 无需 gost 的情况
             os.environ['HTTP_PROXY'] = self._settings['proxy']
             os.environ['HTTPS_PROXY'] = self._settings['proxy']
-            proxy_info = Config.parse_proxy(self._settings['proxy'])
-            if proxy_info['proxy_user'] and proxy_info['proxy_passwd']:
-                auth_info = proxy_info['proxy_user'] + ":" + proxy_info['proxy_passwd'] + "@"
-            else:
-                auth_info = ''
-            proxy_without_protocol = auth_info + proxy_info['proxy_ip'] + ':' + proxy_info['proxy_port'] 
-            self._proxies = {'https': "https://" + proxy_without_protocol,
-                             'http': "http://" + proxy_without_protocol}
+            self._proxies = {'https': self._settings['proxy'],
+                             'http': self._settings['proxy']}
 
         if self._settings['no_proxy_akamai']:
             os.environ['NO_PROXY'] = "127.0.0.1,localhost,bahamut.akamaized.net"
@@ -137,7 +138,7 @@ class Anime:
 
     def __get_src(self):
         if self._settings['use_mobile_api']:
-            self._src = self.__request_json(f'https://api.gamer.com.tw/mobile_app/anime/v2/video.php?sn={self._sn}', no_cookies=True)
+            self._src = self.__request_json(f'https://api.gamer.com.tw/mobile_app/anime/v4/video.php?sn={self._sn}', no_cookies=True)
         else:
             req = f'https://ani.gamer.com.tw/animeVideo.php?sn={self._sn}'
             f = self.__request(req, no_cookies=True, use_pyhttpx=True)
@@ -200,18 +201,21 @@ class Anime:
 
     def __get_episode_list(self):
         if self._settings['use_mobile_api']:
-            for _type in self._src['data']['anime']['volumes']:
-                for _sn in self._src['data']['anime']['volumes'][_type]:
+            for _type in self._src['data']['anime']['episodes']:
+                for _sn in self._src['data']['anime']['episodes'][_type]:
                     if _type == '0':  # 本篇
-                        self._episode_list[str(_sn['volume'])] = int(_sn["video_sn"])
+                        self._episode_list[str(_sn['episode'])] = int(
+                            _sn["videoSn"])
                     elif _type == '1':  # 電影
-                        self._episode_list['電影'] = int(_sn["video_sn"])
+                        self._episode_list['電影'] = int(_sn["videoSn"])
                     elif _type == '2':  # 特別篇
-                        self._episode_list[f'特別篇{_sn["volume"]}'] = int(_sn["video_sn"])
+                        self._episode_list[f'特別篇{_sn["episode"]}'] = int(
+                            _sn["videoSn"])
                     elif _type == '3':  # 中文配音
-                        self._episode_list[f'中文配音{_sn["volume"]}'] = int(_sn["video_sn"])
+                        self._episode_list[f'中文配音{_sn["episode"]}'] = int(
+                            _sn["videoSn"])
                     else:  # 中文電影
-                        self._episode_list['中文電影'] = int(_sn["video_sn"])
+                        self._episode_list['中文電影'] = int(_sn["videoSn"])
         else:
             try:
                 # Find the section with class 'season'
@@ -256,27 +260,27 @@ class Anime:
         accept_encoding = 'gzip, deflate'
         cache_control = 'max-age=0'
         self._mobile_header = {
-            "User-Agent": "Animad/1.12.5 (tw.com.gamer.android.animad; build: 222; Android 5.1.1) okHttp/4.4.0",
+            "User-Agent": "Animad/1.16.16 (tw.com.gamer.android.animad; build:328; Android 9) okHttp/4.4.0",
             "X-Bahamut-App-Android": "tw.com.gamer.android.animad",
-            "X-Bahamut-App-Version": "222",
+            "X-Bahamut-App-Version": "328",
             "Accept-Encoding": "gzip",
             "Connection": "Keep-Alive"
         }
         self._web_header = {
-                "User-Agent": ua,
-                "referer": ref,
-                "Accept-Language": lang,
-                "Accept": accept,
-                "Accept-Encoding": accept_encoding,
-                "Cache-Control": cache_control,
-                "Origin": origin
-            }
+            "User-Agent": ua,
+            "referer": ref,
+            "Accept-Language": lang,
+            "Accept": accept,
+            "Accept-Encoding": accept_encoding,
+            "Cache-Control": cache_control,
+            "Origin": origin
+        }
         if self._settings['use_mobile_api']:
             self._req_header = self._mobile_header
         else:
             self._req_header = self._web_header
 
-    def __request(self, req, no_cookies=False, show_fail=True, max_retry=3, addition_header=None, use_pyhttpx = False):
+    def __request(self, req, no_cookies=False, show_fail=True, max_retry=3, addition_header=None, use_pyhttpx=False):
         # 设置 header
         current_header = self._req_header
         if addition_header is None:
@@ -294,12 +298,14 @@ class Anime:
         while True:
             try:
                 if use_pyhttpx:
-                    #https://github.com/miyouzi/aniGamerPlus/issues/249 pyhttpx 作者 在改動
-                    #https://github.com/zero3301/pyhttpx/commit/4735190df741f4c00287ec948f0734fd2c21bfee 把 proxy 驗證放到了 proxies URL 裏面
+                    # https://github.com/miyouzi/aniGamerPlus/issues/249 pyhttpx 作者 在改動
+                    # https://github.com/zero3301/pyhttpx/commit/4735190df741f4c00287ec948f0734fd2c21bfee
+                    # 把 proxy 驗證放到了 proxies URL 裏面
                     f = self._pyhttpx_session.get(req, headers=current_header, cookies=cookies, timeout=10,
                                                   proxies=self._proxies)
-                else:   
-                    f = self._session.get(req, headers=current_header, cookies=cookies, timeout=10)
+                else:
+                    f = self._session.get(
+                        req, headers=current_header, cookies=cookies, timeout=10)
             except requests.exceptions.RequestException as e:
                 if error_cnt >= max_retry >= 0:
                     raise TryTooManyTimeError('任務狀態: sn=' + str(self._sn) + ' 请求失败次数过多！请求链接：\n%s' % req)
@@ -327,9 +333,11 @@ class Anime:
 
                     if self._settings['use_mobile_api'] and 'X-Bahamut-App-Android' in self._req_header:
                         # 使用移动API将无法进行 cookie 刷新, 改回 header 刷新 cookie
-                        err_print(self._sn, '嘗試切換回 Web Header 刷新 Cookie', display=False)
+                        err_print(
+                            self._sn, '嘗試切換回 Web Header 刷新 Cookie', display=False)
                         self._req_header = self._web_header
-                        self.__request('https://ani.gamer.com.tw/')  # 再次尝试获取新 cookie
+                        # 再次尝试获取新 cookie
+                        self.__request('https://ani.gamer.com.tw/')
                     else:
                         err_print(self._sn, '收到cookie重置響應', display=False)
                         time.sleep(2)
@@ -344,16 +352,19 @@ class Anime:
                             if old_BAHARUNE != self._cookies['BAHARUNE']:
                                 # 新cookie读取成功 (因为有可能其他线程接到了新cookie)
                                 succeed_flag = True
-                                err_print(self._sn, '讀取cookie', '新cookie讀取成功', display=False)
+                                err_print(self._sn, '讀取cookie',
+                                          '新cookie讀取成功', display=False)
                                 break
                             else:
-                                err_print(self._sn, '讀取cookie', '新cookie讀取失敗', display=False)
+                                err_print(self._sn, '讀取cookie',
+                                          '新cookie讀取失敗', display=False)
                                 random_wait_time = random.uniform(2, 5)
                                 time.sleep(random_wait_time)
                                 try_counter = try_counter + 1
                         if not succeed_flag:
                             self._cookies = {}
-                            err_print(0, '用戶cookie更新失敗! 使用游客身份訪問', status=1, no_sn=True)
+                            err_print(0, '用戶cookie更新失敗! 使用游客身份訪問',
+                                      status=1, no_sn=True)
                             Config.invalid_cookie()  # 将失效cookie更名
 
                         if self._settings['use_mobile_api'] and 'X-Bahamut-App-Android' not in self._req_header:
@@ -369,7 +380,8 @@ class Anime:
                     Config.renew_cookies(self._cookies, log=False)
 
                     key_list_str = ', '.join(self._session.cookies.keys())
-                    err_print(self._sn, f'用戶cookie刷新 {key_list_str} ', display=False)
+                    err_print(self._sn, f'用戶cookie刷新 {
+                              key_list_str} ', display=False)
 
                     self.__request('https://ani.gamer.com.tw/')
                     # 20210724 动画疯一步到位刷新 Cookie
@@ -378,11 +390,12 @@ class Anime:
                         if self._settings['use_mobile_api']:
                             # 当使用 APP API 临时切换至 Web API 更新 Cookie 时，Cookie 更新成功再切换回 App Header
                             self._req_header = self._mobile_header
-                            err_print(self._sn, '切換回 App Header 進行影片解析', display=False)
+                            err_print(
+                                self._sn, '切換回 App Header 進行影片解析', display=False)
 
         return f
 
-    def __request_json(self, req, no_cookies=False, show_fail=True, max_retry=3, addition_header=None, use_pyhttpx = False):
+    def __request_json(self, req, no_cookies=False, show_fail=True, max_retry=3, addition_header=None, use_pyhttpx=False):
         if use_pyhttpx:
             return self.__request(req, no_cookies, show_fail, max_retry, addition_header, use_pyhttpx).json
         else:
@@ -397,7 +410,7 @@ class Anime:
 
         def get_playlist():
             if self._settings['use_mobile_api']:
-                req = f'https://api.gamer.com.tw/mobile_app/anime/v2/m3u8.php?sn={str(self._sn)}&device={self._device_id}'
+                req = f'https://api.gamer.com.tw/mobile_app/anime/v3/m3u8.php?videoSn={str(self._sn)}&device={self._device_id}'
             else:
                 req = 'https://ani.gamer.com.tw/ajax/m3u8.php?sn=' + str(self._sn) + '&device=' + self._device_id
             self._playlist = self.__request_json(req)
@@ -420,29 +433,36 @@ class Anime:
             return self.__request_json(req)
 
         def unlock():
-            req = 'https://ani.gamer.com.tw/ajax/unlock.php?sn=' + str(self._sn) + "&ttl=0"
+            req = 'https://ani.gamer.com.tw/ajax/unlock.php?sn=' + \
+                str(self._sn) + "&ttl=0"
             f = self.__request(req)  # 无响应正文
 
         def check_lock():
-            req = 'https://ani.gamer.com.tw/ajax/checklock.php?device=' + self._device_id + '&sn=' + str(self._sn)
+            req = 'https://ani.gamer.com.tw/ajax/checklock.php?device=' + \
+                self._device_id + '&sn=' + str(self._sn)
             f = self.__request(req)
 
         def start_ad():
             if self._settings['use_mobile_api']:
-                req = f"https://api.gamer.com.tw/mobile_app/anime/v1/stat_ad.php?schedule=-1&sn={str(self._sn)}"
+                req = f"https://api.gamer.com.tw/mobile_app/anime/v1/stat_ad.php?schedule=-1&sn={
+                    str(self._sn)}"
             else:
-                req = "https://ani.gamer.com.tw/ajax/videoCastcishu.php?sn=" + str(self._sn) + "&s=194699"
+                req = "https://ani.gamer.com.tw/ajax/videoCastcishu.php?sn=" + \
+                    str(self._sn) + "&s=194699"
             f = self.__request(req)  # 无响应正文
 
         def skip_ad():
             if self._settings['use_mobile_api']:
-                req = f"https://api.gamer.com.tw/mobile_app/anime/v1/stat_ad.php?schedule=-1&ad=end&sn={str(self._sn)}"
+                req = f"https://api.gamer.com.tw/mobile_app/anime/v1/stat_ad.php?schedule=-1&ad=end&sn={
+                    str(self._sn)}"
             else:
-                req = "https://ani.gamer.com.tw/ajax/videoCastcishu.php?sn=" + str(self._sn) + "&s=194699&ad=end"
+                req = "https://ani.gamer.com.tw/ajax/videoCastcishu.php?sn=" + \
+                    str(self._sn) + "&s=194699&ad=end"
             f = self.__request(req)  # 无响应正文
 
         def video_start():
-            req = "https://ani.gamer.com.tw/ajax/videoStart.php?sn=" + str(self._sn)
+            req = "https://ani.gamer.com.tw/ajax/videoStart.php?sn=" + \
+                str(self._sn)
             f = self.__request(req)
 
         def check_no_ad(error_count=10):
@@ -455,7 +475,8 @@ class Anime:
             resp = self.__request_json(req)
             if 'time' in resp.keys():
                 if not resp['time'] == 1:
-                    err_print(self._sn, '廣告似乎還沒去除, 追加等待2秒, 剩餘重試次數 ' + str(error_count), status=1)
+                    err_print(self._sn, '廣告似乎還沒去除, 追加等待2秒, 剩餘重試次數 ' +
+                              str(error_count), status=1)
                     time.sleep(2)
                     skip_ad()
                     video_start()
@@ -464,7 +485,8 @@ class Anime:
                     # 通过广告检查
                     if error_count != 10:
                         ads_time = (10-error_count)*2 + ad_time + 2
-                        err_print(self._sn, '通过廣告時間' + str(ads_time) + '秒, 記錄到配置檔案', status=2)
+                        err_print(self._sn, '通过廣告時間' +
+                                  str(ads_time) + '秒, 記錄到配置檔案', status=2)
                         if self._settings['use_mobile_api']:
                             self._settings['mobile_ads_time'] = ads_time
                         else:
@@ -475,10 +497,15 @@ class Anime:
                 sys.exit(1)
 
         def parse_playlist():
-            req = self._playlist['src']
-            f = self.__request(req, no_cookies=True, addition_header={'origin': 'https://ani.gamer.com.tw'})
-            url_prefix = re.sub(r'playlist.+', '', self._playlist['src'])  # m3u8 URL 前缀
-            m3u8_list = re.findall(r'=\d+x\d+\n.+', f.content.decode())  # 将包含分辨率和 m3u8 文件提取
+            playlist_url = ""
+            if self._settings['use_mobile_api']:
+                playlist_url = self._playlist['data']['src']
+            else:
+                playlist_url = self._playlist['src']
+            f = self.__request(playlist_url, no_cookies=True, addition_header={'origin': 'https://ani.gamer.com.tw'})
+            url_prefix = re.sub(r'playlist.+', '', playlist_url)  # m3u8 URL 前缀
+            m3u8_list = re.findall(
+                r'=\d+x\d+\n.+', f.content.decode())  # 将包含分辨率和 m3u8 文件提取
             m3u8_dict = {}
             for i in m3u8_list:
                 key = re.findall(r'=\d+x\d+', i)[0]  # 提取分辨率
@@ -500,7 +527,9 @@ class Anime:
         # 可能是限制級動畫要求登陸
         if 'error' in user_info.keys():
             msg = '《' + self._title + '》 '
-            msg = msg + 'code=' + str(user_info['error']['code']) + ' message: ' + user_info['error']['message']
+            msg = msg + 'code=' + \
+                str(user_info['error']['code']) + \
+                ' message: ' + user_info['error']['message']
             err_print(self._sn, '收到錯誤', msg, status=1)
             sys.exit(1)
 
@@ -510,20 +539,23 @@ class Anime:
             # 20200806 网站更新，最低广告更新时间从20s增加到25s https://github.com/miyouzi/aniGamerPlus/issues/55
 
             if self._settings['only_use_vip']:
-                 err_print(self._sn, '非VIP','因為已設定只使用VIP下載，故強制停止', status=1, no_sn=True)
-                 sys.exit(1)
+                err_print(self._sn, '非VIP', '因為已設定只使用VIP下載，故強制停止',
+                          status=1, no_sn=True)
+                sys.exit(1)
 
             if self._settings['use_mobile_api']:
                 ad_time = self._settings['mobile_ads_time']  # APP解析廣告解析時間不同
             else:
                 ad_time = self._settings['ads_time']
 
-            err_print(self._sn, '正在等待', '《' + self.get_title() + '》 由於不是VIP賬戶, 正在等待'+str(ad_time)+'s廣告時間')
+            err_print(self._sn, '正在等待', '《' + self.get_title() +
+                      '》 由於不是VIP賬戶, 正在等待'+str(ad_time)+'s廣告時間')
             start_ad()
             time.sleep(ad_time)
             skip_ad()
         else:
-            err_print(self._sn, '開始下載', '《' + self.get_title() + '》 識別到VIP賬戶, 立即下載')
+            err_print(self._sn, '開始下載', '《' +
+                      self.get_title() + '》 識別到VIP賬戶, 立即下載')
 
         if not self._settings['use_mobile_api']:
             video_start()
@@ -537,7 +569,8 @@ class Anime:
         return self._m3u8_dict
 
     def get_season_num(self, zh_num):
-        zh2digit_table = {'零': 0, '一': 1, '二': 2, '兩': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
+        zh2digit_table = {'零': 0, '一': 1, '二': 2, '兩': 2, '三': 3,
+                          '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
 
         # 位數遞增，由高位開始取
         digit_num = 0
@@ -579,26 +612,33 @@ class Anime:
 
         if self._settings['plex_naming']:
             # 適配 PLEX 命名規則
-            season = re.findall(self.season_title_filter, self._bangumi_name_orig)
-            extra = re.findall(self.extra_title_filter, self._bangumi_name_orig)
+            season = re.findall(self.season_title_filter,
+                                self._bangumi_name_orig)
+            extra = re.findall(self.extra_title_filter,
+                               self._bangumi_name_orig)
             if season:
-                season_num_string = ''.join(season).replace('第','').replace('季','')
+                season_num_string = ''.join(season).replace(
+                    '第', '').replace('季', '')
                 season_num = self.get_season_num(season_num_string)
-                episode = '[S' + str(season_num).zfill(self._settings['zerofill']) + 'E' + episode + ']'
+                episode = '[S' + str(season_num).zfill(
+                    self._settings['zerofill']) + 'E' + episode + ']'
             elif extra:
-                episode = '[E' + episode + ']' # do not classify season if the bangumi type is "特別篇" or "中文配音"
+                # do not classify season if the bangumi type is "特別篇" or "中文配音"
+                episode = '[E' + episode + ']'
             elif episode == "電影":
-                episode = '[' + episode + ']' # there is no episode num for "電影"
+                # there is no episode num for "電影"
+                episode = '[' + episode + ']'
             else:
-                episode = '[S01E' + episode + ']' # as season 1 if there is no matching above types
+                # as season 1 if there is no matching above types
+                episode = '[S01E' + episode + ']'
         else:
             episode = '[' + episode + ']'
 
         if self._settings['add_bangumi_name_to_video_filename']:
             # 如果用户需要番剧名
             bangumi_name = self._settings['customized_video_filename_prefix'] \
-                           + self._bangumi_name \
-                           + self._settings['customized_bangumi_name_suffix']
+                + self._bangumi_name \
+                + self._settings['customized_bangumi_name_suffix']
 
             filename = bangumi_name + episode  # 有番剧名的文件名
         else:
@@ -618,7 +658,7 @@ class Anime:
 
         # 添加用户后缀及扩展名
         filename = filename + self._settings['customized_video_filename_suffix'] \
-                   + '.' + self._settings['video_filename_extension']
+            + '.' + self._settings['video_filename_extension']
         legal_filename = Config.legalize_filename(filename)  # 去除非法字符
         filename = legal_filename
         return filename
@@ -627,28 +667,34 @@ class Anime:
         filename = self.__get_filename(resolution, without_suffix=True)
         # temp_filename 为临时文件名，下载完成后更名正式文件名
         temp_filename = filename + self._settings['customized_video_filename_suffix'] + '.' + temp_suffix \
-                        + '.' + self._settings['video_filename_extension']
+            + '.' + self._settings['video_filename_extension']
         temp_filename = Config.legalize_filename(temp_filename)
         return temp_filename
 
     def __segment_download_mode(self, resolution=''):
         # 设定文件存放路径
         filename = self.__get_filename(resolution)
-        merging_filename = self.__get_temp_filename(resolution, temp_suffix='MERGING')
+        merging_filename = self.__get_temp_filename(
+            resolution, temp_suffix='MERGING')
 
         output_file = os.path.join(self._bangumi_dir, filename)  # 完整输出路径
         merging_file = os.path.join(self._temp_dir, merging_filename)
 
-        url_path = os.path.split(self._m3u8_dict[resolution])[0]  # 用于构造完整 chunk 链接
-        temp_dir = os.path.join(self._temp_dir, str(self._sn) + '-downloading-by-aniGamerPlus')  # 临时目录以 sn 命令
+        url_path = os.path.split(self._m3u8_dict[resolution])[
+            0]  # 用于构造完整 chunk 链接
+        temp_dir = os.path.join(self._temp_dir, str(
+            self._sn) + '-downloading-by-aniGamerPlus')  # 临时目录以 sn 命令
         if not os.path.exists(temp_dir):  # 创建临时目录
             os.makedirs(temp_dir)
-        m3u8_path = os.path.join(temp_dir, str(self._sn) + '.m3u8')  # m3u8 存放位置
-        m3u8_text = self.__request(self._m3u8_dict[resolution], no_cookies=True).text  # 请求 m3u8 文件
+        m3u8_path = os.path.join(temp_dir, str(
+            self._sn) + '.m3u8')  # m3u8 存放位置
+        m3u8_text = self.__request(
+            self._m3u8_dict[resolution], no_cookies=True).text  # 请求 m3u8 文件
         with open(m3u8_path, 'w', encoding='utf-8') as f:  # 保存 m3u8 文件在本地
             f.write(m3u8_text)
             pass
-        key_uri = re.search(r'(?<=AES-128,URI=")(.*)(?=")', m3u8_text).group()  # 把 key 的链接提取出来
+        key_uri = re.search(r'(?<=AES-128,URI=")(.*)(?=")',
+                            m3u8_text).group()  # 把 key 的链接提取出来
         original_key_uri = key_uri
 
         if not re.match(r'http.+', key_uri):
@@ -662,7 +708,8 @@ class Anime:
 
         chunk_list = re.findall(r'media_b.+ts.*', m3u8_text)  # chunk
 
-        limiter = threading.Semaphore(self._settings['multi_downloading_segment'])  # chunk 并发下载限制器
+        limiter = threading.Semaphore(
+            self._settings['multi_downloading_segment'])  # chunk 并发下载限制器
         total_chunk_num = len(chunk_list)
         finished_chunk_counter = 0
         failed_flag = False
@@ -679,24 +726,28 @@ class Anime:
                                            max_retry=self._settings['segment_max_retry']).content)
             except TryTooManyTimeError:
                 failed_flag = True
-                err_print(self._sn, '下載狀態', 'Bad segment=' + chunk_name, status=1)
+                err_print(self._sn, '下載狀態', 'Bad segment=' +
+                          chunk_name, status=1)
                 limiter.release()
                 sys.exit(1)
             except BaseException as e:
                 failed_flag = True
-                err_print(self._sn, '下載狀態', 'Bad segment=' + chunk_name + ' 發生未知錯誤: ' + str(e), status=1)
+                err_print(self._sn, '下載狀態', 'Bad segment=' +
+                          chunk_name + ' 發生未知錯誤: ' + str(e), status=1)
                 limiter.release()
                 sys.exit(1)
 
             # 显示完成百分比
             nonlocal finished_chunk_counter
             finished_chunk_counter = finished_chunk_counter + 1
-            progress_rate = float(finished_chunk_counter / total_chunk_num * 100)
+            progress_rate = float(
+                finished_chunk_counter / total_chunk_num * 100)
             progress_rate = round(progress_rate, 2)
             Config.tasks_progress_rate[int(self._sn)]['rate'] = progress_rate
 
             if self.realtime_show_file_size:
-                sys.stdout.write('\r正在下載: sn=' + str(self._sn) + ' ' + filename + ' ' + str(progress_rate) + '%  ')
+                sys.stdout.write('\r正在下載: sn=' + str(self._sn) +
+                                 ' ' + filename + ' ' + str(progress_rate) + '%  ')
                 sys.stdout.flush()
             limiter.release()
 
@@ -729,11 +780,14 @@ class Anime:
 
         # m3u8 本地化
         # replace('\\', '\\\\') 为转义win路径
-        m3u8_text_local_version = m3u8_text.replace(original_key_uri, os.path.join(temp_dir, 'key.m3u8key')).replace('\\', '\\\\')
+        m3u8_text_local_version = m3u8_text.replace(
+            original_key_uri, os.path.join(temp_dir, 'key.m3u8key')).replace('\\', '\\\\')
         for chunk in chunk_list:
             chunk_filename = re.findall(r'media_b.+ts', chunk)[0]  # chunk 文件名
-            chunk_path = os.path.join(temp_dir, chunk_filename).replace('\\', '\\\\')  # chunk 本地路径
-            m3u8_text_local_version = m3u8_text_local_version.replace(chunk, chunk_path)
+            chunk_path = os.path.join(temp_dir, chunk_filename).replace(
+                '\\', '\\\\')  # chunk 本地路径
+            m3u8_text_local_version = m3u8_text_local_version.replace(
+                chunk, chunk_path)
         with open(m3u8_path, 'w', encoding='utf-8') as f:  # 保存本地化的 m3u8
             f.write(m3u8_text_local_version)
 
@@ -762,12 +816,15 @@ class Anime:
                 ffmpeg_cmd[7:7] = iter(['-metadata:s:a:0', 'language=chi'])
 
         # 执行 ffmpeg
-        run_ffmpeg = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        run_ffmpeg = subprocess.Popen(
+            ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         run_ffmpeg.communicate()
         # 记录文件大小，单位为 MB
-        self.video_size = int(os.path.getsize(merging_file) / float(1024 * 1024))
+        self.video_size = int(os.path.getsize(
+            merging_file) / float(1024 * 1024))
         # 重命名
-        err_print(self._sn, '下載狀態', filename + ' 解密合并完成, 本集 ' + str(self.video_size) + 'MB, 正在移至番劇目錄……')
+        err_print(self._sn, '下載狀態', filename + ' 解密合并完成, 本集 ' +
+                  str(self.video_size) + 'MB, 正在移至番劇目錄……')
         if os.path.exists(output_file):
             os.remove(output_file)
 
@@ -788,7 +845,8 @@ class Anime:
     def __ffmpeg_download_mode(self, resolution=''):
         # 设定文件存放路径
         filename = self.__get_filename(resolution)
-        downloading_filename = self.__get_temp_filename(resolution, temp_suffix='DOWNLOADING')
+        downloading_filename = self.__get_temp_filename(
+            resolution, temp_suffix='DOWNLOADING')
 
         output_file = os.path.join(self._bangumi_dir, filename)  # 完整输出路径
         downloading_file = os.path.join(self._temp_dir, downloading_filename)
@@ -806,7 +864,8 @@ class Anime:
             os.remove(downloading_file)  # 清理任务失败的尸体
 
         # subprocess.call(ffmpeg_cmd, creationflags=0x08000000)  # 仅windows
-        run_ffmpeg = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, bufsize=204800, stderr=subprocess.PIPE)
+        run_ffmpeg = subprocess.Popen(
+            ffmpeg_cmd, stdout=subprocess.PIPE, bufsize=204800, stderr=subprocess.PIPE)
 
         def check_ffmpeg_alive():
             # 应对ffmpeg卡死, 资源限速等，若 1min 中内文件大小没有增加超过 3M, 则判定卡死
@@ -831,7 +890,8 @@ class Anime:
                             '\r正在下載: sn=' + str(self._sn) + ' ' + filename + '    ' + str(size) + 'MB      ')
                         sys.stdout.flush()
                     else:
-                        sys.stdout.write('\r正在下載: sn=' + str(self._sn) + ' ' + filename + '    文件尚未生成  ')
+                        sys.stdout.write(
+                            '\r正在下載: sn=' + str(self._sn) + ' ' + filename + '    文件尚未生成  ')
                         sys.stdout.flush()
 
                 if time_counter % 60 == 0 and os.path.exists(downloading_file):
@@ -862,14 +922,17 @@ class Anime:
             if os.path.exists(output_file):
                 os.remove(output_file)
             # 记录文件大小，单位为 MB
-            self.video_size = int(os.path.getsize(downloading_file) / float(1024 * 1024))
-            err_print(self._sn, '下載狀態', filename + '本集 ' + str(self.video_size) + 'MB, 正在移至番劇目錄……')
+            self.video_size = int(os.path.getsize(
+                downloading_file) / float(1024 * 1024))
+            err_print(self._sn, '下載狀態', filename + '本集 ' +
+                      str(self.video_size) + 'MB, 正在移至番劇目錄……')
 
             if self._settings['use_copyfile_method']:
                 shutil.copyfile(downloading_file, output_file)  # 适配rclone挂载盘
                 os.remove(downloading_file)  # 刪除临时合并文件
             else:
-                shutil.move(downloading_file, output_file)  # 此方法在遇到rclone挂载盘时会出错
+                # 此方法在遇到rclone挂载盘时会出错
+                shutil.move(downloading_file, output_file)
 
             self.local_video_path = output_file  # 记录保存路径, FTP上传用
             self._video_filename = filename  # 记录文件名, FTP上传用
@@ -888,23 +951,29 @@ class Anime:
             self._bangumi_dir = save_dir  # 用于 cui 用户指定下载在当前目录
 
         # 預先保留原始標題
-        self._bangumi_name_orig = self._title.replace('[' + self.get_episode() + ']', '').strip()  # 提取番剧名（去掉集数后缀）
-        self._bangumi_name_orig = re.sub(r'\s+', ' ', self._bangumi_name_orig)  # 去除重复空格
+        self._bangumi_name_orig = self._title.replace(
+            '[' + self.get_episode() + ']', '').strip()  # 提取番剧名（去掉集数后缀）
+        self._bangumi_name_orig = re.sub(
+            r'\s+', ' ', self._bangumi_name_orig)  # 去除重复空格
 
         if rename:
             bangumi_name = self._bangumi_name
             # 适配多版本的番剧
-            version = re.findall(r'\[.+?\]', self._bangumi_name)  # 在番剧名中寻找是否存在多版本标记
+            # 在番剧名中寻找是否存在多版本标记
+            version = re.findall(r'\[.+?\]', self._bangumi_name)
             if version:  # 如果这个番剧是多版本的
                 version = str(version[-1])  # 提取番剧版本名称
-                bangumi_name = bangumi_name.replace(version, '').strip()  # 没有版本名称的 bangumi_name, 且头尾无空格
+                bangumi_name = bangumi_name.replace(
+                    version, '').strip()  # 没有版本名称的 bangumi_name, 且头尾无空格
             # 如果设定重命名了番剧
             # 将其中的番剧名换成用户设定的, 且不影响版本号后缀(如果有)
             self._title = self._title.replace(bangumi_name, rename)
-            self._bangumi_name = self._bangumi_name.replace(bangumi_name, rename)
+            self._bangumi_name = self._bangumi_name.replace(
+                bangumi_name, rename)
 
         # 下载任务开始
-        Config.tasks_progress_rate[int(self._sn)] = {'rate': 0, 'filename': '《'+self.get_title()+'》', 'status': '正在解析'}
+        Config.tasks_progress_rate[int(self._sn)] = {
+            'rate': 0, 'filename': '《'+self.get_title()+'》', 'status': '正在解析'}
 
         try:
             self.__get_m3u8_dict()  # 获取 m3u8 列表
@@ -914,13 +983,15 @@ class Anime:
             self.video_size = 0
             return
 
-        check_ffmpeg = subprocess.Popen('ffmpeg -h', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        check_ffmpeg = subprocess.Popen(
+            'ffmpeg -h', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if check_ffmpeg.stdout.readlines():  # 查找 ffmpeg 是否已放入系统 path
             self._ffmpeg_path = 'ffmpeg'
         else:
             # print('没有在系统PATH中发现ffmpeg，尝试在所在目录寻找')
             if 'Windows' in platform.system():
-                self._ffmpeg_path = os.path.join(self._working_dir, 'ffmpeg.exe')
+                self._ffmpeg_path = os.path.join(
+                    self._working_dir, 'ffmpeg.exe')
             else:
                 self._ffmpeg_path = os.path.join(self._working_dir, 'ffmpeg')
             if not os.path.exists(self._ffmpeg_path):
@@ -929,47 +1000,64 @@ class Anime:
 
         # 创建存放番剧的目录，去除非法字符
         if bangumi_tag:  # 如果指定了番剧分类
-            self._bangumi_dir = os.path.join(self._bangumi_dir, Config.legalize_filename(bangumi_tag))
+            self._bangumi_dir = os.path.join(
+                self._bangumi_dir, Config.legalize_filename(bangumi_tag))
         if classify:  # 控制是否建立番剧文件夹
             if self._settings['classify_season']:  # 控制是否建立番剧季度子文件夹
-                season = re.findall(self.season_title_filter, self._bangumi_name_orig)
-                extra = re.findall(self.extra_title_filter, self._bangumi_name_orig)
+                season = re.findall(self.season_title_filter,
+                                    self._bangumi_name_orig)
+                extra = re.findall(self.extra_title_filter,
+                                   self._bangumi_name_orig)
                 if season:
-                    season_num_string = ''.join(season).replace('第','').replace('季','')
+                    season_num_string = ''.join(season).replace(
+                        '第', '').replace('季', '')
                     season_num = self.get_season_num(season_num_string)
-                    root_bangumi_dir = self._bangumi_name_orig.replace(str(season[0]),'') # remove season name for bangumi root dir
-                    root_bangumi_dir = "".join(root_bangumi_dir.rstrip()) # remove tail space if exists
-                    sub_dir = "Season "+str(season_num) # add season sub folder
+                    root_bangumi_dir = self._bangumi_name_orig.replace(
+                        # remove season name for bangumi root dir
+                        str(season[0]), '')
+                    # remove tail space if exists
+                    root_bangumi_dir = "".join(root_bangumi_dir.rstrip())
+                    # add season sub folder
+                    sub_dir = "Season "+str(season_num)
                 elif extra:
-                    root_bangumi_dir = self._bangumi_name_orig.replace("["+str(extra[0])+"]",'') # remove extra name for bangumi root dir
-                    root_bangumi_dir = "".join(root_bangumi_dir.rstrip()) # remove tail space if exists
-                    sub_dir = "Specials" # add special sub folder if the bangumi type is "特別篇" or "中文配音"
+                    root_bangumi_dir = self._bangumi_name_orig.replace(
+                        # remove extra name for bangumi root dir
+                        "["+str(extra[0])+"]", '')
+                    # remove tail space if exists
+                    root_bangumi_dir = "".join(root_bangumi_dir.rstrip())
+                    sub_dir = "Specials"  # add special sub folder if the bangumi type is "特別篇" or "中文配音"
                 elif self.get_episode() == "電影":
-                    root_bangumi_dir = self._bangumi_name_orig.replace("[電影]",'') # remove 電影 for bangumi root dir
-                    sub_dir = "Movie" # add movie sub folder if the bangumi type is "電影"
+                    root_bangumi_dir = self._bangumi_name_orig.replace(
+                        "[電影]", '')  # remove 電影 for bangumi root dir
+                    sub_dir = "Movie"  # add movie sub folder if the bangumi type is "電影"
                 else:
-                    root_bangumi_dir = self._bangumi_name_orig # for bangumi root dir
-                    root_bangumi_dir = "".join(root_bangumi_dir.rstrip()) # remove tail space if exists
-                    sub_dir = "Season 1" # as season 1 if there is no matching season
+                    root_bangumi_dir = self._bangumi_name_orig  # for bangumi root dir
+                    # remove tail space if exists
+                    root_bangumi_dir = "".join(root_bangumi_dir.rstrip())
+                    sub_dir = "Season 1"  # as season 1 if there is no matching season
                 # 如果设定重命名了番剧
                 # 将其中的番剧根目錄名换成用户设定的
                 if rename:
                     root_bangumi_dir = self._bangumi_name
-                self._bangumi_dir = os.path.join(self._bangumi_dir, Config.legalize_filename(root_bangumi_dir), sub_dir)
+                self._bangumi_dir = os.path.join(
+                    self._bangumi_dir, Config.legalize_filename(root_bangumi_dir), sub_dir)
             else:
-                self._bangumi_dir = os.path.join(self._bangumi_dir, Config.legalize_filename(self._bangumi_name))
+                self._bangumi_dir = os.path.join(
+                    self._bangumi_dir, Config.legalize_filename(self._bangumi_name))
 
         if not os.path.exists(self._bangumi_dir):
             try:
                 os.makedirs(self._bangumi_dir)  # 按番剧创建文件夹分类
             except FileExistsError as e:
-                err_print(self._sn, '下載狀態', '欲創建的番劇資料夾已存在 ' + str(e), display=False)
+                err_print(self._sn, '下載狀態', '欲創建的番劇資料夾已存在 ' +
+                          str(e), display=False)
 
         if not os.path.exists(self._temp_dir):  # 建立临时文件夹
             try:
                 os.makedirs(self._temp_dir)
             except FileExistsError as e:
-                err_print(self._sn, '下載狀態', '欲創建的臨時資料夾已存在 ' + str(e), display=False)
+                err_print(self._sn, '下載狀態', '欲創建的臨時資料夾已存在 ' +
+                          str(e), display=False)
 
         # 如果不存在指定清晰度，则选取最近可用清晰度
         if resolution not in self._m3u8_dict.keys():
@@ -998,7 +1086,8 @@ class Anime:
 
         # 解析完成, 开始下载
         Config.tasks_progress_rate[int(self._sn)]['status'] = '正在下載'
-        Config.tasks_progress_rate[int(self._sn)]['filename'] = self.get_filename()
+        Config.tasks_progress_rate[int(
+            self._sn)]['filename'] = self.get_filename()
 
         if self._settings['segment_download_mode']:
             self.__segment_download_mode(resolution)
@@ -1011,66 +1100,83 @@ class Anime:
         # 下載彈幕
         if self._danmu:
             try:
-                full_filename = os.path.join(self._bangumi_dir, self.__get_filename(resolution)).replace('.' + self._settings['video_filename_extension'], '.ass')
+                full_filename = os.path.join(self._bangumi_dir, self.__get_filename(
+                    resolution)).replace('.' + self._settings['video_filename_extension'], '.ass')
                 d = Danmu(self._sn, full_filename, Config.read_cookie())
                 d.download(self._settings['danmu_ban_words'])
             except BaseException as e:
                 err_print(self._sn, '彈幕異常', '下載彈幕時發生未知錯誤: '+str(e), status=1)
-                err_print(self._sn, '彈幕異常', '異常詳情:\n'+traceback.format_exc(), status=1, display=False)
+                err_print(self._sn, '彈幕異常', '異常詳情:\n' +
+                          traceback.format_exc(), status=1, display=False)
 
         # 推送 CQ 通知
         if self._settings['coolq_notify']:
             try:
-                msg = '【aniGamerPlus消息】\n《' + self._video_filename + '》下载完成, 本集 ' + str(self.video_size) + ' MB'
+                msg = '【aniGamerPlus消息】\n《' + self._video_filename + \
+                    '》下载完成, 本集 ' + str(self.video_size) + ' MB'
                 if self._settings['coolq_settings']['message_suffix']:
                     # 追加用户信息
-                    msg = msg + '\n\n' + self._settings['coolq_settings']['message_suffix']
+                    msg = msg + '\n\n' + \
+                        self._settings['coolq_settings']['message_suffix']
 
                 for query in self._settings['coolq_settings']['query']:
                     if '?' not in query:
                         query = query + '?'
                     else:
                         query = query + '&'
-                    req = query + self._settings['coolq_settings']['msg_argument_name'] + '=' + quote(msg)
+                    req = query + \
+                        self._settings['coolq_settings']['msg_argument_name'] + \
+                        '=' + quote(msg)
                     self.__request(req, no_cookies=True)
             except BaseException as e:
-                err_print(self._sn, 'CQ NOTIFY ERROR', 'Exception: ' + str(e), status=1)
+                err_print(self._sn, 'CQ NOTIFY ERROR',
+                          'Exception: ' + str(e), status=1)
 
         # 推送 TG 通知
         if self._settings['telebot_notify']:
             try:
-                msg = '【aniGamerPlus消息】\n《' + self._video_filename + '》下载完成, 本集 ' + str(self.video_size) + ' MB'
+                msg = '【aniGamerPlus消息】\n《' + self._video_filename + \
+                    '》下载完成, 本集 ' + str(self.video_size) + ' MB'
                 vApiTokenTelegram = self._settings['telebot_token']
                 try:
-                    if self._settings['telebot_use_chat_id'] and self._settings['telebot_chat_id']:  #手动指定发送目标
+                    # 手动指定发送目标
+                    if self._settings['telebot_use_chat_id'] and self._settings['telebot_chat_id']:
                         chat_id = self._settings['telebot_chat_id']
                     else:
                         apiMethod = "getUpdates"
-                        api_url = "https://api.telegram.org/bot" + vApiTokenTelegram + "/" + apiMethod # Telegram bot api url
+                        api_url = "https://api.telegram.org/bot" + \
+                            vApiTokenTelegram + "/" + apiMethod  # Telegram bot api url
                         response = self.__request_json(api_url)
-                        chat_id = response["result"][0]["message"]["chat"]["id"] # Get chat id
+                        # Get chat id
+                        chat_id = response["result"][0]["message"]["chat"]["id"]
                     try:
                         api_method = "sendMessage"
                         req = "https://api.telegram.org/bot" \
-                                + vApiTokenTelegram \
-                                + "/" \
-                                + api_method \
-                                + "?chat_id=" \
-                                + str(chat_id) \
-                                + "&text=" \
-                                + str(msg)
-                        self.__request(req, no_cookies=True) # Send msg to telegram bot
+                            + vApiTokenTelegram \
+                            + "/" \
+                            + api_method \
+                            + "?chat_id=" \
+                            + str(chat_id) \
+                            + "&text=" \
+                            + str(msg)
+                        # Send msg to telegram bot
+                        self.__request(req, no_cookies=True)
                     except:
-                        err_print(self._sn, 'TG NOTIFY ERROR', "Exception: Send msg error\nReq: " + req, status=1) # Send mag error
+                        # Send mag error
+                        err_print(self._sn, 'TG NOTIFY ERROR',
+                                  "Exception: Send msg error\nReq: " + req, status=1)
                 except:
-                    err_print(self._sn, 'TG NOTIFY ERROR', "Exception: Invalid access token\nToken: " + vApiTokenTelegram, status=1) # Cannot find chat id
+                    err_print(self._sn, 'TG NOTIFY ERROR', "Exception: Invalid access token\nToken: " +
+                              vApiTokenTelegram, status=1)  # Cannot find chat id
             except BaseException as e:
-                err_print(self._sn, 'TG NOTIFY ERROR', 'Exception: ' + str(e), status=1)
+                err_print(self._sn, 'TG NOTIFY ERROR',
+                          'Exception: ' + str(e), status=1)
 
         # 推送通知至 Discord
         if self._settings['discord_notify']:
             try:
-                msg = '【aniGamerPlus消息】\n《' + self._video_filename + '》下載完成，本集 ' + str(self.video_size) + ' MB'
+                msg = '【aniGamerPlus消息】\n《' + self._video_filename + \
+                    '》下載完成，本集 ' + str(self.video_size) + ' MB'
                 url = self._settings['discord_token']
                 data = {
                     'content': None,
@@ -1083,9 +1189,11 @@ class Anime:
                         }}]}
                 r = requests.post(url, json=data)
                 if r.status_code != 204:
-                    err_print(self._sn, 'discord NOTIFY ERROR', "Exception: Send msg error\nReq: " + r.text, status=1)
+                    err_print(self._sn, 'discord NOTIFY ERROR',
+                              "Exception: Send msg error\nReq: " + r.text, status=1)
             except:
-                err_print(self._sn, 'Discord NOTIFY UNKNOWN ERROR', 'Exception: ' + str(e), status=1)
+                err_print(self._sn, 'Discord NOTIFY UNKNOWN ERROR',
+                          'Exception: ' + str(e), status=1)
 
         # plex 自動更新媒體庫
         if self._settings['plex_refresh']:
@@ -1099,7 +1207,8 @@ class Anime:
                 if r.status_code != 200:
                     err_print(self._sn, 'Plex auto Refresh ERROR', status=1)
             except:
-                err_print(self._sn, 'Plex auto Refresh UNKNOWN ERROR', 'Exception: ' + str(e), status=1)
+                err_print(self._sn, 'Plex auto Refresh UNKNOWN ERROR',
+                          'Exception: ' + str(e), status=1)
 
     def upload(self, bangumi_tag='', debug_file=''):
         first_connect = True  # 标记是否是第一次连接, 第一次连接会删除临时缓存目录
@@ -1127,24 +1236,30 @@ class Anime:
             connect_flag = False
             while err_counter <= 3:
                 try:
-                    ftp.connect(self._settings['ftp']['server'], self._settings['ftp']['port'])  # 连接 FTP
-                    ftp.login(self._settings['ftp']['user'], self._settings['ftp']['pwd'])  # 登陆
+                    ftp.connect(
+                        # 连接 FTP
+                        self._settings['ftp']['server'], self._settings['ftp']['port'])
+                    ftp.login(self._settings['ftp']['user'],
+                              self._settings['ftp']['pwd'])  # 登陆
                     connect_flag = True
                     break
                 except ftplib.error_temp as e:
                     if show_err:
                         if 'Too many connections' in str(e):
-                            detail = self._video_filename + ' 当前FTP連接數過多, 5分鐘后重試, 最多重試三次: ' + str(e)
+                            detail = self._video_filename + \
+                                ' 当前FTP連接數過多, 5分鐘后重試, 最多重試三次: ' + str(e)
                             err_print(self._sn, 'FTP狀態', detail, status=1)
                         else:
-                            detail = self._video_filename + ' 連接FTP時發生錯誤, 5分鐘后重試, 最多重試三次: ' + str(e)
+                            detail = self._video_filename + \
+                                ' 連接FTP時發生錯誤, 5分鐘后重試, 最多重試三次: ' + str(e)
                             err_print(self._sn, 'FTP狀態', detail, status=1)
                     err_counter = err_counter + 1
                     for i in range(5 * 60):
                         time.sleep(1)
                 except BaseException as e:
                     if show_err:
-                        detail = self._video_filename + ' 在連接FTP時發生無法處理的異常:' + str(e)
+                        detail = self._video_filename + \
+                            ' 在連接FTP時發生無法處理的異常:' + str(e)
                         err_print(self._sn, 'FTP狀態', detail, status=1)
                     break
 
@@ -1159,7 +1274,8 @@ class Anime:
                     ftp.cwd(self._settings['ftp']['cwd'])  # 进入用户指定目录
                 except ftplib.error_perm as e:
                     if show_err:
-                        err_print(self._sn, 'FTP狀態', '進入指定FTP目錄時出錯: ' + str(e), status=1)
+                        err_print(self._sn, 'FTP狀態',
+                                  '進入指定FTP目錄時出錯: ' + str(e), status=1)
 
             if bangumi_tag:  # 番剧分类
                 try:
@@ -1170,10 +1286,12 @@ class Anime:
                         ftp.cwd(bangumi_tag)
                     except ftplib.error_perm as e:
                         if show_err:
-                            err_print(self._sn, 'FTP狀態', '創建目錄番劇目錄時發生異常, 你可能沒有權限創建目錄: ' + str(e), status=1)
+                            err_print(
+                                self._sn, 'FTP狀態', '創建目錄番劇目錄時發生異常, 你可能沒有權限創建目錄: ' + str(e), status=1)
 
             # 归类番剧
-            ftp_bangumi_dir = Config.legalize_filename(self._bangumi_name)  # 保证合法
+            ftp_bangumi_dir = Config.legalize_filename(
+                self._bangumi_name)  # 保证合法
             try:
                 ftp.cwd(ftp_bangumi_dir)
             except ftplib.error_perm:
@@ -1208,7 +1326,8 @@ class Anime:
                 ftp.quit()
             except BaseException as e:
                 if show_err and self._settings['ftp']['show_error_detail']:
-                    err_print(self._sn, 'FTP狀態', '將强制關閉FTP連接, 因爲在退出時收到異常: ' + str(e))
+                    err_print(self._sn, 'FTP狀態',
+                              '將强制關閉FTP連接, 因爲在退出時收到異常: ' + str(e))
                 ftp.close()
 
         def remove_dir(dir_name):
@@ -1240,7 +1359,8 @@ class Anime:
         if not connect_ftp():  # 连接 FTP
             return self.upload_succeed_flag  # 如果连接失败
 
-        err_print(self._sn, '正在上傳', self._video_filename + ' title=' + self._title + '……')
+        err_print(self._sn, '正在上傳', self._video_filename +
+                  ' title=' + self._title + '……')
         try_counter = 0
         video_filename = self._video_filename  # video_filename 将可能会储存 pure-ftpd 缓存文件名
         max_try_num = self._settings['ftp']['max_retry_num']
@@ -1249,7 +1369,8 @@ class Anime:
             try:
                 if try_counter > 0:
                     # 传输遭中断后处理
-                    detail = self._video_filename + ' 发生异常, 重連FTP, 續傳文件, 將重試最多' + str(max_try_num) + '次……'
+                    detail = self._video_filename + \
+                        ' 发生异常, 重連FTP, 續傳文件, 將重試最多' + str(max_try_num) + '次……'
                     err_print(self._sn, '上傳狀態', detail, status=1)
                     if not connect_ftp():  # 重连
                         return self.upload_succeed_flag
@@ -1277,7 +1398,9 @@ class Anime:
                     continue
 
                 ftp.voidcmd('TYPE I')  # 二进制模式
-                conn = ftp.transfercmd('STOR ' + video_filename, ftp_binary_size)  # ftp服务器文件名和offset偏移地址
+                # ftp服务器文件名和offset偏移地址
+                conn = ftp.transfercmd(
+                    'STOR ' + video_filename, ftp_binary_size)
                 with open(self.local_video_path, 'rb') as f:
                     f.seek(ftp_binary_size)  # 从断点处开始读取
                     while True:
@@ -1301,7 +1424,8 @@ class Anime:
                         remote_size = ftp.size(video_filename)  # 远程文件大小
                         break
                     except ftplib.error_perm as e1:
-                        err_print(self._sn, 'FTP狀態', 'ftplib.error_perm: ' + str(e1))
+                        err_print(self._sn, 'FTP狀態',
+                                  'ftplib.error_perm: ' + str(e1))
                         remote_size = 0
                         break
                     except OSError as e2:
@@ -1338,29 +1462,34 @@ class Anime:
                     ftp.delete(self._video_filename)
                 except ftplib.error_perm:
                     pass
-                ftp.rename(tmp_dir + '/' + video_filename, self._video_filename)  # 将视频从临时文件移出, 顺便重命名
+                ftp.rename(tmp_dir + '/' + video_filename,
+                           self._video_filename)  # 将视频从临时文件移出, 顺便重命名
                 remove_dir(tmp_dir)  # 删除临时目录
                 self.upload_succeed_flag = True  # 标记上传成功
                 break
 
             except ConnectionResetError as e:
                 if self._settings['ftp']['show_error_detail']:
-                    detail = self._video_filename + ' 在上傳過程中網絡被重置, 將重試最多' + str(max_try_num) + '次' + ', 收到異常: ' + str(e)
+                    detail = self._video_filename + ' 在上傳過程中網絡被重置, 將重試最多' + \
+                        str(max_try_num) + '次' + ', 收到異常: ' + str(e)
                     err_print(self._sn, '上傳狀態', detail, status=1)
                 try_counter = try_counter + 1
             except TimeoutError as e:
                 if self._settings['ftp']['show_error_detail']:
-                    detail = self._video_filename + ' 在上傳過程中超時, 將重試最多' + str(max_try_num) + '次, 收到異常: ' + str(e)
+                    detail = self._video_filename + ' 在上傳過程中超時, 將重試最多' + \
+                        str(max_try_num) + '次, 收到異常: ' + str(e)
                     err_print(self._sn, '上傳狀態', detail, status=1)
                 try_counter = try_counter + 1
             except socket.timeout as e:
                 if self._settings['ftp']['show_error_detail']:
-                    detail = self._video_filename + ' 在上傳過程socket超時, 將重試最多' + str(max_try_num) + '次, 收到異常: ' + str(e)
+                    detail = self._video_filename + ' 在上傳過程socket超時, 將重試最多' + \
+                        str(max_try_num) + '次, 收到異常: ' + str(e)
                     err_print(self._sn, '上傳狀態', detail, status=1)
                 try_counter = try_counter + 1
 
         if not self.upload_succeed_flag:
-            err_print(self._sn, '上傳失敗', self._video_filename + ' 放棄上傳!', status=1)
+            err_print(self._sn, '上傳失敗', self._video_filename +
+                      ' 放棄上傳!', status=1)
             exit_ftp()
             return self.upload_succeed_flag
 
@@ -1371,11 +1500,16 @@ class Anime:
     def get_info(self):
         err_print(self._sn, '顯示資訊')
         indent = '                    '
-        err_print(0, indent+'影片標題:', '\"' + self.get_title() + '\"', no_sn=True, display_time=False)
-        err_print(0, indent+'番劇名稱:', '\"' + self.get_bangumi_name() + '\"', no_sn=True, display_time=False)
-        err_print(0, indent+'劇集標題:', '\"' + self.get_episode() + '\"', no_sn=True, display_time=False)
-        err_print(0, indent+'参考檔名:', '\"' + self.get_filename() + '\"', no_sn=True, display_time=False)
-        err_print(0, indent+'可用解析度', 'P '.join(self.get_m3u8_dict().keys()) + 'P\n', no_sn=True, display_time=False)
+        err_print(0, indent+'影片標題:', '\"' + self.get_title() +
+                  '\"', no_sn=True, display_time=False)
+        err_print(0, indent+'番劇名稱:', '\"' + self.get_bangumi_name() +
+                  '\"', no_sn=True, display_time=False)
+        err_print(0, indent+'劇集標題:', '\"' + self.get_episode() +
+                  '\"', no_sn=True, display_time=False)
+        err_print(0, indent+'参考檔名:', '\"' + self.get_filename() +
+                  '\"', no_sn=True, display_time=False)
+        err_print(0, indent+'可用解析度', 'P '.join(self.get_m3u8_dict().keys()
+                                               ) + 'P\n', no_sn=True, display_time=False)
 
     def enable_danmu(self):
         self._danmu = True
@@ -1385,6 +1519,6 @@ class Anime:
 
 
 if __name__ == '__main__':
-    a = Anime('31724')
-    print(a.get_m3u8_dict())
+    a = Anime('40035')
+    # print(a.get_m3u8_dict())
     a.download('360')
