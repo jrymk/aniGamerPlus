@@ -14,6 +14,9 @@ services:
         source: ./config.json
         target: /app/config.json
       - type: bind
+        source: ./detached_danmu.json
+        target: /app/detached_danmu.json
+      - type: bind
         source: ./aniGamer.db
         target: /app/aniGamer.db
     ports:

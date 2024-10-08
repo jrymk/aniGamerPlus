@@ -332,20 +332,11 @@ def download_cd_counter():
     thread_limiter.release()  # 并发下载限制器
 
 
-def extract_sn(filename):
-    # Define a regex pattern to match [sn-<number>]
-    pattern = r'\[sn-(\d+)\]'
-
-    # Search for the pattern in the filename
-    match = re.search(pattern, filename)
-
-    # If a match is found, return the number
-    if match:
-        return match.group(1)  # Group 1 contains the digits
-    return None
-
-
 def danmu_update(directories=[]):
+    err_print('0', '正在掃描' + str(directories) +
+              '路徑下的所有 *.ass 檔案，這可能會花費一點時間。', no_sn=True, status=1)
+
+
     # Update danmu files in the specified directories
     ass_files = []
 
@@ -368,29 +359,59 @@ def danmu_update(directories=[]):
     # Sort the files by modified date (oldest first)
     ass_files.sort(key=lambda f: f.stat().st_mtime, reverse=False)
 
-    # filter filtered_files where extract_sn(ass_file.name) is not None
-    ass_files = [f for f in ass_files if extract_sn(f.name) is not None]
-
+    # open the file and read for the line of format "Update Details: anigamer-{sn}" and stop if the "[V4+ Styles]" tag is reached
+    # the line could optionally be suffixed by "-removed", these are removed from the ass_files list as well.
+    # extract the sn number and store it along side ass_file
+    valid_ass_files = []
+    for ass_file in ass_files:
+        with open(ass_file, 'r', encoding='utf-8') as file:
+            for line in file:
+                if line.startswith("Update Details: anigamer-"):
+                    if "-removed" in line:
+                        break
+                    match = re.search(r'anigamer-(\d+)', line)
+                    if match:
+                        sn = match.group(1)
+                        valid_ass_files.append((ass_file, sn))
+                    break
+                if "[V4+ Styles]" in line:
+                    break
 
     # Iterate through the files and process them
     successes = 0
     scanned = 0
+    removed = 0
     total_to_update = len(ass_files)
 
-    err_print('0', '路徑' + str(directories) +
-              "下共計" + str(total_to_update) + "個有[sn-xxxx]標籤的.ass檔案過舊，符合更新條件。", no_sn=True, status=1)
+    err_print('0', '共計' + str(total_to_update) + '個有含"Update Details: anigamer-{sn}"的.ass檔案過舊，符合更新條件。', no_sn=True, status=1)
 
-    for ass_file in ass_files:
+    for ass_file, sn in valid_ass_files:
         if scanned >= settings['refresh_danmu_episodes_per_session']:
             break  # Stop processing if we've reached the episode update limit
 
         ass_path = str(ass_file.resolve())
         print(ass_path)
-        sn = extract_sn(ass_file.name)
 
         d = Danmu(sn, ass_path, Config.read_cookie())
         if d.download(settings['danmu_ban_words']):
             successes += 1
+        else:
+            # open the ass file, and append "-removed" in the "Update Details: anigamer-" line
+            with open(ass_file, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+            with open(ass_file, 'w', encoding='utf-8') as file:
+                for line in lines:
+                    if line.startswith("Update Details: anigamer-"):
+                        file.write(line.strip() + "-removed\n")
+                    else:
+                        file.write(line)
+            # append the full file path to "/app/detached_danmu.txt". If the file does not exist, create it.
+            with open("/app/detached_danmu.txt", 'a', encoding='utf-8') as removed_file:
+                removed_file.write(ass_path + '\n')
+            # output logs
+            err_print(
+                sn, '動畫可能已經下架，該.ass檔案已進行標註不再自動更新。檔案路徑也已放在detached_danmu.txt供查閱: ' + ass_path, status=1)
+            removed += 1
 
         scanned += 1
         ticks = int(80 * scanned / total_to_update)
@@ -400,6 +421,8 @@ def danmu_update(directories=[]):
 
     err_print(0, '彈幕更新任務完成！已成功在' + directory + "路徑下更新了" +
               str(successes) + '個彈幕檔案。', no_sn=True, status=2)
+    if removed > 0:
+        err_print(0, '有' + str(removed) + '個彈幕檔案因動畫可能已下架，已標註不再更新', status=1)
 
 
 
@@ -622,7 +645,7 @@ def __cui(sn, cui_resolution, cui_download_mode, cui_thread_limit, ep_range,
 
     if cui_download_mode == 'danmu-update':
         print('當前模式: 搜索 ' + settings['bangumi_dir'] +
-              ' 以下的所有.ass檔案，重新下載並覆蓋。請注意，檔名中必須有[sn-xxxx]標籤，可以在config.json中添加"add_sn_to_video_filename": true開啟。')
+              ' 以下的所有.ass檔案，重新下載並覆蓋。請注意，.ass檔案中必須有 "Update Details: anigamer-xxxx" 在 [Script Info] 區塊內，才能進行更新')
         danmu_update(
             directories=[settings['bangumi_dir'], settings['movie_dir']])
     if cui_download_mode == 'single':

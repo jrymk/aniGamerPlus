@@ -42,7 +42,7 @@ class Danmu():
 
         if r.status_code != 200:
             err_print(self._sn, '彈幕下載失敗', 'status_code=' +
-                      str(r.status_code) + '，該影片可能已經下架，或 sn 有誤。若要停止掃描該影片，可將 [sn-xxxx] 標籤移除。', status=1)
+                      str(r.status_code) + '，該影片可能已經下架，或 sn 有誤。該ass檔案已標註 removed，若有誤請手動移除該標記。', status=1)
             return False
 
         h = {
@@ -71,6 +71,12 @@ class Danmu():
         danmu_template_file = os.path.join(Config.get_working_dir(), 'DanmuTemplate.ass')
         with open(danmu_template_file, 'r', encoding='utf8') as temp:
             for line in temp.readlines():
+                # Check if the line contains the placeholder for the sn tag
+                if 'Update Details: anigamer-undefined' in line:
+                    # Replace 'undefined' with the correct sn value
+                    line = line.replace(
+                        'anigamer-undefined', f'anigamer-{self._sn}')
+                # Write the updated or original line to the output file
                 output.write(line)
 
         j = json.loads(r.text)
