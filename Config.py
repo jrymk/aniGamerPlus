@@ -104,7 +104,6 @@ def __init_settings():
                 'segment_max_retry': 8,  # 在分段下载模式时有效, 每个分段最大重试次数, -1 为 无限重试
                 'add_bangumi_name_to_video_filename': True,
                 'add_resolution_to_video_filename': True,  # 是否在文件名中添加清晰度说明
-                'add_sn_to_video_filename': True,  # 是否在文件名中添加sn
                 'customized_video_filename_prefix': '【動畫瘋】',  # 用户自定前缀
                 'customized_bangumi_name_suffix': '',  # 用户自定义番剧名后缀 (在剧集名之前)
                 'customized_video_filename_suffix': '',  # 用户自定后缀

@@ -32,7 +32,6 @@
   "refresh_danmu_when_checking_update": true, // 在檢查前掃描所有彈幕檔案並更新
   "refresh_danmu_episodes_per_session": 50, // 每次更新彈幕最多更新幾集（太多會吃 429 Too many requests）
   "refresh_danmu_age_threshold_hrs": 24, // 只更新過舊的彈幕檔案，單位小時
-  "add_sn_to_video_filename": true, // 添加sn標籤到檔名（必須開啟才能使用掃描彈幕更新功能）
 }
 ```
 
