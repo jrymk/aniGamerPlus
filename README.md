@@ -15,8 +15,8 @@
 彈幕現在是最新的了\
 ![image](https://github.com/user-attachments/assets/541c8317-92f0-4093-8e85-ea9767082b87)
 
-
-可以自動在檔名尾添加 `[sn-12345]` 標籤
+ass字幕檔內新增 `Update Details: anigamer-{sn}` 標籤，可自動更新彈幕\
+![image](https://github.com/user-attachments/assets/0e4293c1-bd1e-4251-88bd-ded718cdd53d)
 
 如此就可以使用 `danmu_update(path)` 自動掃描 `path` 之下的所有 `.ass` 檔案，讀取其sn並從動畫瘋獲取最新的彈幕。預設將在執行檢查前運行，保證彈幕維持最新。\
 此操作不會花費非常多時間，因為取得彈幕是不需要看廣告的。
@@ -34,6 +34,11 @@
   "refresh_danmu_age_threshold_hrs": 24, // 只更新過舊的彈幕檔案，單位小時
 }
 ```
+
+若更新失敗，可能為該動畫已下架，此時標籤會更新為 `Update Details: anigamer-{sn}-removed`，以後就不會再更新該彈幕檔案。\
+標註為已下架的檔案會寫入到 `/app/detached_danmu.txt`，供查閱或手動復原。
+
+2024/10/08以前，採用將sn寫入檔案名稱的方案，現在已更改為寫入ass檔案，應為更好的做法。若要將以前的 `[sn-xxx]` 標籤從檔名中移除並轉移到ass檔案內，可使用 `python ./migrate_danmu.py <路徑>` 工具更新該目錄以下所有子目錄的所有包含 [sn] 標籤的 ass 檔案，並重新命名對應的 mp4 檔案（如果存在的話）。
 
 ---
 
