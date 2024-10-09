@@ -381,7 +381,7 @@ def danmu_update(directories=[]):
     successes = 0
     scanned = 0
     removed = 0
-    total_to_update = len(ass_files)
+    total_to_update = len(valid_ass_files)
 
     err_print('0', '共計' + str(total_to_update) + '個有含"Update Details: anigamer-{sn}"的.ass檔案過舊，符合更新條件。', no_sn=True, status=1)
 
@@ -393,9 +393,10 @@ def danmu_update(directories=[]):
         print(ass_path)
 
         d = Danmu(sn, ass_path, Config.read_cookie())
-        if d.download(settings['danmu_ban_words']):
+        download_result = d.download(settings['danmu_ban_words'])
+        if download_result == 0: # 成功
             successes += 1
-        else:
+        elif download_result == -9: # 已下架
             # open the ass file, and append "-removed" in the "Update Details: anigamer-" line
             with open(ass_file, 'r', encoding='utf-8') as file:
                 lines = file.readlines()
@@ -410,7 +411,7 @@ def danmu_update(directories=[]):
                 removed_file.write(ass_path + '\n')
             # output logs
             err_print(
-                sn, '動畫可能已經下架，該.ass檔案已進行標註不再自動更新。檔案路徑也已放在detached_danmu.txt供查閱: ' + ass_path, status=1)
+                sn, '動畫已經下架，該.ass檔案已進行標註不再自動更新。檔案路徑也已放在detached_danmu.txt供查閱: ' + ass_path, status=1)
             removed += 1
 
         scanned += 1

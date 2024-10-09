@@ -25,7 +25,7 @@ class Danmu():
         # 確認不是匹配到空字串
         return result and result.group(0)
 
-    def download(self, ban_words) -> bool:
+    def download(self, ban_words) -> int:
         h = {
             'Content-Type':
             'application/x-www-form-urlencoded;charset=utf-8',
@@ -41,9 +41,18 @@ class Danmu():
             'https://ani.gamer.com.tw/ajax/danmuGet.php', data=data, headers=h)
 
         if r.status_code != 200:
-            err_print(self._sn, '彈幕下載失敗', 'status_code=' +
-                      str(r.status_code) + '，該影片可能已經下架，或 sn 有誤。該ass檔案已標註 removed，若有誤請手動移除該標記。', status=1)
-            return False
+            # verify if the episode is actually removed
+            # make a GET request to https://ani.gamer.com.tw/animeVideo.php?sn={sn}
+            verify_response = requests.get(f'https://ani.gamer.com.tw/animeVideo.php?sn={self._sn}', headers=h, cookies=self._cookies)
+            # check if there is a paragraph with '目前無此動畫或動畫授權已到期！'
+            if '目前無此動畫或動畫授權已到期！' in verify_response.text:
+                err_print(self._sn, '彈幕下載失敗', 'danmuGet status=' +
+                      str(r.status_code) + '，動畫瘋顯示無此動畫或動畫授權已到期。該ass檔案已標註 removed，若有誤請手動移除該標記。', status=1)
+                return -9
+            else:
+                err_print(self._sn, '彈幕下載失敗', 'danmuGet status=' +
+                      str(r.status_code) + '，無法獲取動畫頁面確認影片是否下架，可能為暫時的網路問題，此彈幕將於未來重新嘗試更新。', status=1)
+                return -1
 
         h = {
             'accept':
@@ -145,7 +154,7 @@ class Danmu():
             output.write('\n')
 
         err_print(self._sn, '彈幕下載完成', self._full_filename, status=2)
-        return True
+        return 0
 
 if __name__ == '__main__':
     pass

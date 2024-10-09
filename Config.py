@@ -56,6 +56,8 @@ def legalize_filename(filename):
     legal_filename = re.sub(r':+', '：', legal_filename)  # 处理 : , 转中文：
     legal_filename = re.sub(r'\\', '＼', legal_filename)  # 处理 \ , 转全型＼
     legal_filename = re.sub(r'/', '／', legal_filename)  # 处理 / , 转全型／
+    # remove leading spaces and trailing periods and spaces
+    legal_filename = legal_filename.strip().rstrip('.') # Windows 會不開心
     return legal_filename
 
 
