@@ -5,9 +5,10 @@
 # @File    : Config.py
 # @Software: PyCharm
 
-import os, json, re, sys, requests, time, random, codecs, chardet
+import errno, os, json, re, sys, requests, time, random, codecs, chardet
 import sqlite3
 import socket
+import threading
 from curl_cffi import requests as curl_requests
 from urllib.parse import quote
 from urllib.parse import urlencode
@@ -26,6 +27,7 @@ aniGamerPlus_version = 'v25.2'
 latest_config_version = 18.0
 latest_database_version = 2.0
 cookie = None
+cookie_file_lock = threading.Lock()
 max_multi_thread = 5
 max_multi_downloading_segment = 5
 tasks_progress_rate = {}  # 储存任务进度, 供面板使用,
@@ -750,18 +752,38 @@ def read_cookie(log=False):
 
 def invalid_cookie():
     # 当cookie失效时, 将cookie改名, 避免重复尝试失效的cookie
-    if os.path.exists(cookie_path):
-        invalid_cookie_path = cookie_path.replace('cookie.txt', 'invalid_cookie.txt')
+    global cookie
+    invalid_cookie_path = cookie_path.replace('cookie.txt', 'invalid_cookie.txt')
+    with cookie_file_lock:
+        if not os.path.exists(cookie_path):
+            return
+
+        cookie = None  # 重置已读取的cookie
         try:
-            global cookie
-            cookie = None  # 重置已读取的cookie
-            if os.path.exists(invalid_cookie_path):
-                os.remove(invalid_cookie_path)
-            os.rename(cookie_path, invalid_cookie_path)
-        except BaseException as e:
+            os.replace(cookie_path, invalid_cookie_path)
+        except OSError as e:
+            if e.errno != errno.EBUSY:
+                __color_print(0, 'cookie狀態', '嘗試標記失效cookie時遇到未知錯誤: ' + str(e), no_sn=True, status=1)
+                return
+
+            # A bind-mounted file is itself a mount point and cannot be renamed.
+            # Preserve the invalid cookie, then clear the mounted source in place.
+            try:
+                with open(cookie_path, 'rb') as source:
+                    invalid_cookie = source.read()
+                if invalid_cookie:
+                    with open(invalid_cookie_path, 'wb') as destination:
+                        destination.write(invalid_cookie)
+                with open(cookie_path, 'wb'):
+                    pass
+            except Exception as fallback_error:
+                __color_print(0, 'cookie狀態', '嘗試標記失效cookie時遇到未知錯誤: ' + str(fallback_error), no_sn=True, status=1)
+                return
+        except Exception as e:
             __color_print(0, 'cookie狀態', '嘗試標記失效cookie時遇到未知錯誤: ' + str(e), no_sn=True, status=1)
-        else:
-            __color_print(0, 'cookie狀態', '已成功標記失效cookie', no_sn=True, display=False)
+            return
+
+        __color_print(0, 'cookie狀態', '已成功標記失效cookie', no_sn=True, display=False)
 
 
 def time_stamp_to_time(timestamp):
